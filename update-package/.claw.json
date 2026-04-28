@@ -1,0 +1,9 @@
+{
+  "overlay": "vibecodekit-hybrid-ultra",
+  "version": "0.11.4.1",
+  "default_permission_mode": "default",
+  "hooks_dir": ".claw/hooks",
+  "commands_dir": ".claude/commands",
+  "agents_dir": ".claude/agents",
+  "skill_dir": "ai-rules/vibecodekit"
+}

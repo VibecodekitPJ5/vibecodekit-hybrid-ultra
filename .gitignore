@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.hypothesis/
+*.egg-info/
+*.egg
+build/
+dist/
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Vibecodekit runtime artifacts (generated per-project, not source)
+.vibecode/runtime/install.lock
+.vibecode/runtime/denial_store/
+.vibecode/runtime/cost_ledger/
+.vibecode/runtime/event_bus/
+
+# Local install / scratch
+scratch/
+tmp/
+*.local.json
+
+# Release artifacts (keep in GitHub Release assets, not in git)
+release-v*/
+*.zip

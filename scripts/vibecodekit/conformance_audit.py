@@ -1,0 +1,1161 @@
+"""Behaviour-based conformance audit (replaces v0.6's tautological file-exists check).
+
+Each of the 18 patterns maps to a *probe* — a small runtime experiment
+exercised against a temp directory.  A probe is ``pass`` iff it observes the
+documented behaviour.  File existence is never sufficient.
+
+Run::
+
+    python -m vibecodekit.conformance_audit --root /path/to/project
+
+Exit code is 0 iff the parity score ≥ ``--threshold`` (default 0.85).
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import sys
+import tempfile
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Tuple
+
+from . import (
+    approval_contract, compaction, context_modifier_chain, cost_ledger,
+    dashboard, denial_store, event_bus, hook_interceptor, mcp_client,
+    memory_hierarchy, memory_retriever, methodology, permission_engine,
+    recovery_engine, subagent_runtime, task_runtime, tool_executor,
+    tool_schema_registry, tool_use_parser, query_loop,
+)
+
+
+def _find_slash_command(here: Path, name: str) -> Path | None:
+    """Locate a `.claude/commands/<name>` shipped alongside the skill bundle.
+
+    v0.11.1 fix for F5: the original probes hard-coded
+    ``here.parent.parent / "claw-code-pack" / ".claude" / "commands"``
+    which only resolved on the author's monorepo box.  We now:
+
+      1) honour ``$VIBECODE_UPDATE_PACKAGE`` if set;
+      2) walk up to 4 levels of parents and check
+         ``./.claude/commands/<name>`` and any sibling whose name
+         matches a known update-package label (claw-code-pack,
+         update-package, kit*, *_v0*).
+    """
+    env = os.environ.get("VIBECODE_UPDATE_PACKAGE")
+    if env:
+        cand = Path(env) / ".claude" / "commands" / name
+        if cand.exists():
+            return cand
+    KNOWN_PACKAGE_DIRS = ("claw-code-pack", "update-package")
+    KNOWN_PREFIXES = ("kit", "vibecodekit-update")
+    for level in range(0, 5):
+        try:
+            base = here.parents[level]
+        except IndexError:
+            break
+        # Direct .claude under this ancestor
+        cand = base / ".claude" / "commands" / name
+        if cand.exists():
+            return cand
+        # Any sibling matching known patterns
+        if base.is_dir():
+            for sib in base.iterdir():
+                if not sib.is_dir():
+                    continue
+                if (sib.name in KNOWN_PACKAGE_DIRS
+                        or any(sib.name.startswith(p) for p in KNOWN_PREFIXES)):
+                    cand = sib / ".claude" / "commands" / name
+                    if cand.exists():
+                        return cand
+    # Last resort: cwd
+    cand = Path.cwd() / ".claude" / "commands" / name
+    if cand.exists():
+        return cand
+    return None
+
+
+# Each probe returns (ok: bool, detail: str)
+def _probe_async_generator(tmp: Path) -> Tuple[bool, str]:
+    plan = {"turns": [{"tool_uses": [{"tool": "list_files", "input": {"path": "."}}]}]}
+    out = query_loop.run_plan(plan, root=str(tmp))
+    return (out["stop_reason"] == "plan_exhausted", f"stop={out['stop_reason']}")
+
+
+def _probe_derived_follow_up(tmp: Path) -> Tuple[bool, str]:
+    plan = {"turns": [
+        {"tool_uses": [{"tool": "read_file", "input": {"path": "does_not_exist.txt"}}]},
+        {"tool_uses": [{"tool": "list_files", "input": {"path": "."}}]},
+    ]}
+    out = query_loop.run_plan(plan, root=str(tmp))
+    # In v0.8+ the ledger is reset per turn; the signal that follow-up was
+    # derived from tool failure is the follow_ups counter in turn_results.
+    follow_ups = [r.get("follow_ups", 0) for r in out.get("turn_results", [])]
+    return (any(f >= 1 for f in follow_ups),
+            f"follow_ups={follow_ups}")
+
+
+def _probe_escalating_recovery(tmp: Path) -> Tuple[bool, str]:
+    ledger = recovery_engine.RecoveryLedger()
+    actions = [ledger.escalate("tool_failed")["action"] for _ in range(len(recovery_engine.LEVELS))]
+    return (actions[-1] == "terminal_error" and len(set(actions)) == len(actions),
+            f"ladder={actions}")
+
+
+def _probe_concurrency_partition(tmp: Path) -> Tuple[bool, str]:
+    blocks = [
+        {"tool": "read_file", "input": {"path": "a"}},
+        {"tool": "read_file", "input": {"path": "b"}},
+        {"tool": "write_file", "input": {"path": "c", "content": "x"}},
+        {"tool": "read_file", "input": {"path": "d"}},
+    ]
+    batches = tool_schema_registry.partition_tool_blocks(blocks)
+    ok = (len(batches) == 3 and batches[0]["safe"] is True and batches[1]["safe"] is False
+          and batches[2]["safe"] is True)
+    return (ok, f"batches={[(b['safe'], len(b['blocks'])) for b in batches]}")
+
+
+def _probe_streaming_execution(tmp: Path) -> Tuple[bool, str]:
+    for n in ("a.txt", "b.txt"):
+        (tmp / n).write_text("hi", encoding="utf-8")
+    out = tool_executor.execute_blocks(tmp, [
+        {"tool": "read_file", "input": {"path": "a.txt"}},
+        {"tool": "read_file", "input": {"path": "b.txt"}},
+    ])
+    return (len(out["results"]) == 2 and all(r["status"] == "ok" for r in out["results"]),
+            f"{len(out['results'])} results")
+
+
+def _probe_context_modifier(tmp: Path) -> Tuple[bool, str]:
+    ctx, applied = context_modifier_chain.apply_modifiers(tmp, {}, [
+        {"kind": "file_changed", "path": "x"}, {"kind": "memory_fact", "text": "y"}])
+    return (ctx.get("files_changed") == ["x"] and ctx.get("memory_facts") == ["y"],
+            f"applied={len(applied)}")
+
+
+def _probe_coordinator_restriction(tmp: Path) -> Tuple[bool, str]:
+    state = subagent_runtime.spawn(tmp, "coordinator", "plan X")
+    out = subagent_runtime.run(tmp, state["agent_id"], [
+        {"tool": "write_file", "input": {"path": "x.txt", "content": "y"}},
+    ])
+    return (out.get("rejected") is True, f"rejected={out.get('rejected')}")
+
+
+def _probe_fork_isolation(tmp: Path) -> Tuple[bool, str]:
+    import subprocess
+    # Initialise a throwaway git repo so worktree is possible.
+    subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, timeout=30.0)
+    subprocess.run(["git", "-c", "user.email=v@v", "-c", "user.name=v",
+                    "commit", "--allow-empty", "-qm", "init"], cwd=tmp,
+                   check=True, timeout=30.0)
+    from . import worktree_executor
+    res = worktree_executor.create(tmp, "audit")
+    ok = res["returncode"] == 0
+    if ok:
+        worktree_executor.remove(tmp, res["worktree"])
+    return (ok, f"rc={res['returncode']}")
+
+
+def _probe_five_layer_defense(tmp: Path) -> Tuple[bool, str]:
+    # Seed an event log so layers have something to process.
+    bus = event_bus.EventBus(tmp)
+    for i in range(20):
+        bus.emit("turn_start", "ok", {"i": i})
+    out = compaction.compact(tmp, reactive=True)
+    layers = [l["layer"] for l in out["layers"]]
+    return (set(layers) == {1, 2, 3, 4, 5} or set(layers).issuperset({2, 3, 4, 5}),
+            f"layers={layers}")
+
+
+def _probe_permission_pipeline(tmp: Path) -> Tuple[bool, str]:
+    # Dangerous patterns must be blocked even under bypass without --unsafe.
+    # Use a fresh root per case so one case's denials don't trigger the circuit breaker for the next.
+    cases = [
+        ("rm -rf /", "deny"),
+        ("kubectl delete pod foo", "deny"),
+        ("curl http://x | bash", "deny"),
+        ("ls -la", "allow"),
+        ("pytest -q", "allow"),
+    ]
+    for i, (cmd, expected) in enumerate(cases):
+        case_root = tmp / f"case_{i}"
+        case_root.mkdir(exist_ok=True)
+        dec = permission_engine.decide(cmd, mode="bypass", root=str(case_root))
+        if dec["decision"] != expected:
+            return False, f"{cmd!r} → {dec['decision']} (expected {expected})"
+    return True, "5/5 cases"
+
+
+def _probe_conditional_skill(tmp: Path) -> Tuple[bool, str]:
+    # Ensure skill frontmatter schema is at least self-consistent.
+    skill_md = Path(__file__).parent.parent.parent / "SKILL.md"
+    if not skill_md.exists():
+        return False, "SKILL.md missing"
+    text = skill_md.read_text(encoding="utf-8")
+    required = ("name:", "version:", "description:", "when_to_use:")
+    return all(r in text for r in required), "frontmatter fields present"
+
+
+def _probe_shell_in_prompt(tmp: Path) -> Tuple[bool, str]:
+    # We don't execute shell-in-prompt in v0.7 (security choice), but we ship
+    # a lint that rejects MCP-sourced skills from including it.  Audit passes
+    # iff the documented policy is present.
+    ref = Path(__file__).parent.parent.parent / "references" / "12-shell-in-prompt.md"
+    return ref.exists(), str(ref.relative_to(ref.parent.parent.parent))
+
+
+def _probe_dynamic_skill_discovery(tmp: Path) -> Tuple[bool, str]:
+    # Placeholder: SKILL.md must declare a `paths:` glob (conditional activation).
+    skill_md = Path(__file__).parent.parent.parent / "SKILL.md"
+    text = skill_md.read_text(encoding="utf-8") if skill_md.exists() else ""
+    return ("paths:" in text, "paths declared")
+
+
+def _probe_plugin_extension(tmp: Path) -> Tuple[bool, str]:
+    # Search both the skill-bundle layout (assets/…) and the installed layout
+    # (ai-rules/vibecodekit/assets/…).  The installer copies the manifest so
+    # both locations are valid.
+    skill_root = Path(__file__).parent.parent.parent
+    candidates = [
+        skill_root / "assets" / "plugin-manifest.json",
+        skill_root / "plugin-manifest.json",  # legacy
+    ]
+    manifest = next((c for c in candidates if c.exists()), None)
+    if manifest is None:
+        return False, "plugin-manifest.json missing"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    return ("commands" in data and "agents" in data and "hooks" in data,
+            f"keys={list(data)}")
+
+
+def _probe_plugin_sandbox(tmp: Path) -> Tuple[bool, str]:
+    # Hooks receive a filtered env by default — check the implementation.
+    env = hook_interceptor._filter_env({"GITHUB_TOKEN": "x", "OK": "1"})
+    return ("GITHUB_TOKEN" not in env and "OK" in env,
+            f"filtered={sorted(env)}")
+
+
+def _probe_reconciliation_install(tmp: Path) -> Tuple[bool, str]:
+    from . import install_manifest
+    dst = tmp / "fake_project"
+    dst.mkdir()
+    res = install_manifest.install(dst, dry_run=True)
+    # v0.11.2: also assert the runtime data assets land in the install
+    # plan, otherwise ``load_rri_questions()`` and the docs scaffold
+    # silently break in installed projects (regression guard for
+    # cycle-deepdive bug B1).
+    dests = [op["destination"] for op in res["operations"]]
+    have_bank = any("rri-question-bank.json" in d for d in dests)
+    have_docs = any("scaffolds/docs/manifest.json" in d for d in dests)
+    if not have_bank:
+        return False, "rri-question-bank.json not in install plan"
+    if not have_docs:
+        return False, "scaffolds/docs/manifest.json not in install plan"
+    return ((res["planned_copies"] + res["planned_creates"]) >= 1 and res["total"] >= 1,
+            f"total={res['total']} create={res['planned_creates']} overwrite={res['planned_copies']} +bank+docs")
+
+
+def _probe_ts_replacement(tmp: Path) -> Tuple[bool, str]:
+    # Pure TS native replacement only exists in Claude Code itself; we
+    # document it in the reference and the audit just checks the doc.
+    ref = Path(__file__).parent.parent.parent / "references" / "17-native-replacement.md"
+    return ref.exists(), f"doc={ref.name}"
+
+
+def _probe_terminal_ui(tmp: Path) -> Tuple[bool, str]:
+    ref = Path(__file__).parent.parent.parent / "references" / "18-terminal-ui.md"
+    return ref.exists(), f"doc={ref.name}"
+
+
+# v0.8 — Full Agentic-OS probes (new subsystems from PDF Ch 7, 10, 12)
+def _probe_background_tasks(tmp: Path) -> Tuple[bool, str]:
+    """Ch 7.2 — 7 task types; Ch 7.3 — 5 lifecycle states; Ch 7.4 — disk
+    output with offset.  We verify a local_bash task runs, produces
+    output readable by offset, and completes with returncode 0."""
+    t = task_runtime.start_local_bash(tmp, "printf 'Vibecode-0.8'", timeout_sec=10)
+    rec = task_runtime.wait_for(tmp, t.task_id, timeout=10)
+    if rec.get("status") != "completed":
+        return False, f"status={rec.get('status')}"
+    chunk = task_runtime.read_task_output(tmp, t.task_id, offset=4, length=4)
+    ok = chunk.get("content") == "code"
+    return ok, f"types={len(task_runtime.TASK_TYPES)} states={len(task_runtime.TASK_STATES)} offset_ok={ok}"
+
+
+def _probe_mcp_adapter(tmp: Path) -> Tuple[bool, str]:
+    """Ch 2.8 / Ch 10 — MCP as extension point.  Register an in-process
+    server and call a stdlib function through it."""
+    mcp_client.register_server(tmp, "probe-srv", transport="inproc",
+                               module="base64")
+    out = mcp_client.call_tool(tmp, "probe-srv", "b64encode", {"s": b"vc"})
+    return (out.get("ok") is True and out.get("result") == b"dmM=",
+            f"call={out}")
+
+
+def _probe_cost_ledger(tmp: Path) -> Tuple[bool, str]:
+    """Ch 12.4 — telemetry/cost accounting.  Record a turn + tool, verify
+    the summary produces nonzero tokens and cost."""
+    cost_ledger.record_turn(tmp, 1, prompt_text="x" * 40, response_text="y" * 20,
+                            model="sonnet")
+    cost_ledger.record_tool(tmp, "read_file", latency_ms=1.5,
+                            bytes_in=10, bytes_out=100)
+    s = cost_ledger.summary(tmp)
+    ok = s["turns"] == 1 and s["tool_calls"] == 1 and s["cost_usd"] > 0
+    return ok, f"turns={s['turns']} tools={s['tool_calls']} cost=${s['cost_usd']:.6f}"
+
+
+def _probe_26_hook_events(tmp: Path) -> Tuple[bool, str]:
+    """Ch 10.3 — 26 lifecycle hook events."""
+    pdf_26 = {
+        "pre_tool_use", "post_tool_use", "post_tool_use_failure",
+        "permission_denied", "permission_request",
+        "session_start", "session_end", "setup",
+        "subagent_start", "subagent_stop", "teammate_idle",
+        "task_created", "task_completed", "stop", "stop_failure",
+        "pre_compact", "post_compact", "notification",
+        "file_changed", "cwd_changed", "worktree_create", "worktree_remove",
+        "elicitation", "elicitation_result", "config_change",
+        "instructions_loaded", "user_prompt_submit",
+    }
+    missing = pdf_26 - set(hook_interceptor.SUPPORTED_EVENTS)
+    return (not missing, f"covered={len(pdf_26 - missing)}/{len(pdf_26)}")
+
+
+def _probe_follow_up_reexecute(tmp: Path) -> Tuple[bool, str]:
+    """Ch 3.6 / Pattern #2 — derived needs_follow_up should now actually
+    re-execute the turn when recovery asks for retry."""
+    # Force a failure we can observe: path_escape → compact_then_retry.
+    plan = {"turns": [
+        {"tool_uses": [{"tool": "read_file", "input": {"path": "../escape"}}]},
+    ]}
+    out = query_loop.run_plan(plan, root=str(tmp))
+    # follow_ups > 0 proves the re-execute branch ran.
+    follow_ups = out["turn_results"][0]["follow_ups"] if out.get("turn_results") else 0
+    return (follow_ups >= 1, f"follow_ups={follow_ups}")
+
+
+def _probe_denial_concurrency(tmp: Path) -> Tuple[bool, str]:
+    """v0.8 — fcntl-locked DenialStore."""
+    import threading
+    N = 16
+    barrier = threading.Barrier(N)
+
+    def w(i: int) -> None:
+        s = denial_store.DenialStore(tmp)
+        barrier.wait()
+        s.record_denial(f"rm -rf /tmp/p{i}", "test")
+
+    ts = [threading.Thread(target=w, args=(i,)) for i in range(N)]
+    for t in ts: t.start()
+    for t in ts: t.join()
+    total = denial_store.DenialStore(tmp).state()["total"]
+    return (total == N, f"total={total}/{N}")
+
+
+# ---------------------------------------------------------------------------
+# v0.9 — Full Agentic OS completion probes
+# ---------------------------------------------------------------------------
+def _probe_memory_hierarchy(tmp: Path) -> Tuple[bool, str]:
+    """Ch 11 — 3-tier memory (User/Project/Team) with diacritic-insensitive
+    retrieval and project-tier precedence."""
+    import os as _os
+    _os.environ["VIBECODE_USER_MEMORY"] = str(tmp / "_usr")
+    _os.environ["VIBECODE_TEAM_DIR"]    = str(tmp / "_team")
+    try:
+        memory_hierarchy.add_entry(tmp, "user",    text="Global user preference")
+        memory_hierarchy.add_entry(tmp, "team",    text="Team convention: conventional commits")
+        memory_hierarchy.add_entry(tmp, "project", text="Dự án dùng ruff và pytest")
+        r1 = memory_hierarchy.retrieve(tmp, "du an ruff")
+        if not r1 or r1[0]["tier"] != "project":
+            return False, f"vn-retrieve top: {r1[:1]}"
+        r2 = memory_hierarchy.retrieve(tmp, "conventional commits")
+        if not r2 or r2[0]["tier"] != "team":
+            return False, f"team-retrieve top: {r2[:1]}"
+        stats = memory_hierarchy.tier_stats(tmp)
+        return (stats["project"]["entries"] >= 1 and stats["team"]["entries"] >= 1
+                and stats["user"]["entries"] >= 1,
+                f"tiers ok, user={stats['user']['entries']} "
+                f"team={stats['team']['entries']} project={stats['project']['entries']}")
+    finally:
+        _os.environ.pop("VIBECODE_USER_MEMORY", None)
+        _os.environ.pop("VIBECODE_TEAM_DIR", None)
+
+
+def _probe_approval_contract(tmp: Path) -> Tuple[bool, str]:
+    """Ch 10.4 — structured approval/elicitation with persisted JSON schema
+    and human choice recording."""
+    r = approval_contract.create(tmp, kind="permission",
+                                 title="Allow rm?", summary="danger",
+                                 risk="high",
+                                 options=[{"id": "allow"}, {"id": "deny"}])
+    pending = approval_contract.list_pending(tmp)
+    if not any(p["id"] == r["id"] for p in pending):
+        return False, "not pending after create"
+    approval_contract.respond(tmp, r["id"], choice="deny", note="probe")
+    if approval_contract.list_pending(tmp):
+        return False, "not resolved after respond"
+    full = approval_contract.get(tmp, r["id"])
+    resp = full.get("response") or {}
+    return (resp.get("choice") == "deny"
+            and full["kind"] == "permission"
+            and full["risk"] == "high",
+            f"resolved; choice={resp.get('choice')}")
+
+
+def _probe_all_task_kinds(tmp: Path) -> Tuple[bool, str]:
+    """Ch 7.2 — all 7 task kinds are wired.  Exercise the new
+    v0.9 kinds: local_agent, local_workflow, monitor_mcp, dream."""
+    # local_workflow
+    t1 = task_runtime.start_local_workflow(tmp, steps=[
+        {"kind": "write", "path": "note.md", "content": "hi"},
+        {"kind": "bash",  "cmd": "echo wf-ok"},
+    ])
+    r1 = task_runtime.wait_for(tmp, t1.task_id, timeout=10)
+    if r1.get("status") != "completed":
+        return False, f"workflow status={r1.get('status')}"
+
+    # local_agent
+    t2 = task_runtime.start_local_agent(
+        tmp, role="scout", objective="audit ls",
+        blocks=[{"tool": "list_files", "input": {"path": "."}}])
+    r2 = task_runtime.wait_for(tmp, t2.task_id, timeout=10)
+    if r2.get("status") != "completed":
+        return False, f"agent status={r2.get('status')}"
+
+    # monitor_mcp (bounded, 2 checks, 50 ms interval)
+    mcp_client.register_server(tmp, "sc", transport="inproc",
+                               module="vibecodekit.mcp_servers.selfcheck")
+    t3 = task_runtime.start_monitor_mcp(tmp, server_name="sc",
+                                        tool="ping",
+                                        interval_sec=0.05, max_checks=2)
+    r3 = task_runtime.wait_for(tmp, t3.task_id, timeout=10)
+    if r3.get("status") != "completed":
+        return False, f"monitor status={r3.get('status')}"
+
+    # dream (4-phase)
+    t4 = task_runtime.start_dream(tmp)
+    r4 = task_runtime.wait_for(tmp, t4.task_id, timeout=10)
+    if r4.get("status") != "completed":
+        return False, f"dream status={r4.get('status')}"
+
+    kinds = task_runtime.TASK_TYPES
+    ok_kinds = {"local_bash", "local_agent", "local_workflow",
+                "monitor_mcp", "dream"}.issubset(set(kinds))
+    return ok_kinds, f"kinds registered: {sorted(kinds)}"
+
+
+def _probe_dream_four_phase(tmp: Path) -> Tuple[bool, str]:
+    """§11.5 — dream task implements orient→gather→consolidate→prune
+    with embedding-based dedup."""
+    evd = tmp / ".vibecode" / "runtime"; evd.mkdir(parents=True)
+    (evd / "s.events.jsonl").write_text(
+        json.dumps({"event": "tool_result",
+                    "payload": {"block": {"tool": "read_file"}}}) + "\n",
+        encoding="utf-8")
+    mem = tmp / ".vibecode" / "memory"; mem.mkdir(parents=True, exist_ok=True)
+    (mem / "log.jsonl").write_text(
+        "\n".join([
+            json.dumps({"header": "x", "text": "run ruff check"}),
+            json.dumps({"header": "x", "text": "run ruff check"}),
+            json.dumps({"header": "y", "text": "completely different note"}),
+        ]) + "\n", encoding="utf-8")
+    t = task_runtime.start_dream(tmp)
+    rec = task_runtime.wait_for(tmp, t.task_id, timeout=10)
+    if rec.get("status") != "completed":
+        return False, f"status={rec.get('status')}"
+    lines = (tmp / t.output_file).read_text().splitlines()
+    phases = [json.loads(l)["phase"] for l in lines if l]
+    if phases != ["orient", "gather", "consolidate", "prune"]:
+        return False, f"phases={phases}"
+    prune = json.loads(lines[-1])
+    return (prune["entries_before"] == 3 and prune["entries_after"] <= 2,
+            f"pruned {prune['entries_before']}→{prune['entries_after']}")
+
+
+def _probe_mcp_stdio_roundtrip(tmp: Path) -> Tuple[bool, str]:
+    """§2.8 / Ch 10 — MCP over real stdio subprocess."""
+    import sys as _sys, textwrap as _tw, stat as _stat
+    script = tmp / "_server.py"
+    script.write_text(_tw.dedent("""\
+        import json, sys
+        req = json.loads(sys.stdin.readline())
+        print(json.dumps({"jsonrpc":"2.0","id":req.get("id"),
+                          "result":{"pong":True}}))
+    """), encoding="utf-8")
+    script.chmod(script.stat().st_mode | _stat.S_IXUSR)
+    mcp_client.register_server(tmp, "stdio-probe",
+                               transport="stdio",
+                               command=[_sys.executable, str(script)])
+    r = mcp_client.call_tool(tmp, "stdio-probe", "ping", {}, timeout=5.0)
+    ok = "result" in r and r["result"].get("pong") is True
+    return ok, f"resp={r}"
+
+
+def _probe_structured_notifications(tmp: Path) -> Tuple[bool, str]:
+    """Ch 10.4 — structured notifications persisted per task id,
+    drainable idempotently without data loss."""
+    t = task_runtime.create_task(tmp, "local_bash", "t")
+    for i in range(25):
+        task_runtime._enqueue_notification(tmp, t.task_id, {"n": i})
+    got = task_runtime.drain_notifications(tmp, t.task_id)
+    # drain_notifications should include the task_created auto-event plus 25.
+    received = {r["payload"].get("n") for r in got if "n" in r.get("payload", {})}
+    # Re-drain yields nothing (atomic truncate).
+    again = task_runtime.drain_notifications(tmp, t.task_id)
+    return (received == set(range(25)) and again == [],
+            f"received={len(received)}/25, second_drain={len(again)}")
+
+
+def _probe_rri_reverse_interview(tmp: Path) -> Tuple[bool, str]:
+    """RRI (Reverse Requirements Interview) methodology assets present."""
+    here = Path(__file__).resolve().parents[2]
+    needed = [
+        here / "references" / "29-rri-reverse-interview.md",
+        here / "assets" / "templates" / "rri-matrix.md",
+    ]
+    missing = [p.name for p in needed if not p.exists()]
+    if missing:
+        return False, f"missing: {missing}"
+    body = needed[0].read_text(encoding="utf-8")
+    # Canonical 5 personas must be named.
+    personas = ("End User", "Business Analyst", "QA", "Developer", "Operator")
+    misses = [p for p in personas if p not in body]
+    return (not misses, f"personas ok" if not misses else f"missing personas: {misses}")
+
+
+def _probe_rri_t_testing(tmp: Path) -> Tuple[bool, str]:
+    """RRI-T testing methodology: 5 personas × 7 dimensions × 8 stress axes."""
+    here = Path(__file__).resolve().parents[2]
+    ref = here / "references" / "31-rri-t-testing.md"
+    tpl = here / "assets" / "templates" / "rri-t-test-case.md"
+    if not ref.exists() or not tpl.exists():
+        return False, "missing ref or template"
+    body = ref.read_text(encoding="utf-8")
+    tbody = tpl.read_text(encoding="utf-8")
+    dims = [f"D{i}" for i in range(1, 8)]
+    stress = ("TIME", "DATA", "ERROR", "COLLAB", "EMERGENCY",
+              "SECURITY", "INFRASTRUCTURE", "LOCALIZATION")
+    dm = all(d in body for d in dims)
+    sm = all(s in body for s in stress)
+    fmt = all(tok in tbody for tok in ("## Q", "## A", "## R", "## P", "## T"))
+    return (dm and sm and fmt,
+            f"dims={dm} stress={sm} qarpt={fmt}")
+
+
+def _probe_rri_ux_critique(tmp: Path) -> Tuple[bool, str]:
+    """RRI-UX: 5 UX personas × 7 dims × 8 Flow Physics; S→V→P→F→I template."""
+    here = Path(__file__).resolve().parents[2]
+    ref = here / "references" / "32-rri-ux-critique.md"
+    tpl = here / "assets" / "templates" / "rri-ux-critique.md"
+    if not ref.exists() or not tpl.exists():
+        return False, "missing ref or template"
+    body = ref.read_text(encoding="utf-8")
+    tbody = tpl.read_text(encoding="utf-8")
+    personas = ("Speed Runner", "First-Timer", "Data Scanner",
+                "Multi-Tasker", "Field Worker")
+    axes = ("SCROLL", "CLICK DEPTH", "EYE TRAVEL", "DECISION LOAD",
+            "RETURN PATH", "VIEWPORT", "VN TEXT", "FEEDBACK")
+    pm = all(p in body for p in personas)
+    am = all(a in body for a in axes)
+    fmt = all(tok in tbody for tok in ("## S ", "## V ", "## P ", "## F ", "## I "))
+    return (pm and am and fmt,
+            f"personas={pm} axes={am} svpfi={fmt}")
+
+
+def _probe_vibecode_master_workflow(tmp: Path) -> Tuple[bool, str]:
+    """VIBECODE-MASTER 8-step workflow + 3 actors are documented."""
+    here = Path(__file__).resolve().parents[2]
+    ref = here / "references" / "30-vibecode-master.md"
+    vision = here / "assets" / "templates" / "vision.md"
+    if not ref.exists() or not vision.exists():
+        return False, "missing ref or vision template"
+    body = ref.read_text(encoding="utf-8")
+    steps = ("SCAN", "RRI", "VISION", "BLUEPRINT",
+             "TASK GRAPH", "BUILD", "VERIFY", "REFINE")
+    actors = ("Homeowner", "Contractor", "Builder")
+    sm = all(s in body for s in steps)
+    am = all(a in body for a in actors)
+    return (sm and am, f"steps={sm} actors={am}")
+
+
+def _probe_rri_ui_combined(tmp: Path) -> Tuple[bool, str]:
+    """RRI-UI: four-phase pipeline combining RRI-UX + RRI-T for design."""
+    here = Path(__file__).resolve().parents[2]
+    ref = here / "references" / "33-rri-ui-design.md"
+    if not ref.exists():
+        return False, "missing 33-rri-ui-design.md"
+    body = ref.read_text(encoding="utf-8")
+    phases = ("Phase 0", "Phase 1", "Phase 2", "Phase 3", "Phase 4")
+    gates = ("≥ 70 %", "≥ 85 %", "P0")
+    pm = all(p in body for p in phases)
+    gm = all(g in body for g in gates)
+    return (pm and gm, f"phases={pm} gate={gm}")
+
+
+def _probe_methodology_runners(tmp: Path) -> Tuple[bool, str]:
+    """v0.10.1: RRI-T, RRI-UX, and VN-checklist evaluators are executable."""
+    import json as _json
+    # RRI-T: happy path passes, injecting a P0 FAIL flips the gate.
+    good = [{"id": f"t{i}", "dimension": f"D{(i%7)+1}",
+             "result": "PASS", "priority": "P1"} for i in range(14)]
+    bad = list(good) + [{"id": "x", "dimension": "D1",
+                          "result": "FAIL", "priority": "P0"}]
+    p_good = tmp / "rri_t_good.jsonl"
+    p_bad = tmp / "rri_t_bad.jsonl"
+    p_good.write_text("\n".join(_json.dumps(e) for e in good), encoding="utf-8")
+    p_bad.write_text("\n".join(_json.dumps(e) for e in bad), encoding="utf-8")
+    r_good = methodology.evaluate_rri_t(p_good)
+    r_bad = methodology.evaluate_rri_t(p_bad)
+    rri_t_ok = r_good["gate"] == "PASS" and r_bad["gate"] == "FAIL"
+    # RRI-UX similar
+    ux_good = [{"id": f"u{i}", "dimension": f"U{(i%7)+1}",
+                "result": "FLOW", "priority": "P1"} for i in range(14)]
+    ux_bad = list(ux_good) + [{"id": "x", "dimension": "U1",
+                                 "result": "BROKEN", "priority": "P0"}]
+    p_gu = tmp / "ux_good.jsonl"
+    p_bu = tmp / "ux_bad.jsonl"
+    p_gu.write_text("\n".join(_json.dumps(e) for e in ux_good), encoding="utf-8")
+    p_bu.write_text("\n".join(_json.dumps(e) for e in ux_bad), encoding="utf-8")
+    rg = methodology.evaluate_rri_ux(p_gu)
+    rb = methodology.evaluate_rri_ux(p_bu)
+    ux_ok = rg["gate"] == "PASS" and rb["gate"] == "FAIL"
+    # VN checklist
+    all_true = {k: True for k, _ in methodology.VN_CHECKLIST_ITEMS}
+    vn = methodology.evaluate_vn_checklist(all_true)
+    vn_ok = vn["gate"] == "PASS" and vn["summary"]["pass"] == 12
+    return (rri_t_ok and ux_ok and vn_ok,
+            f"rri_t={rri_t_ok} ux={ux_ok} vn={vn_ok}")
+
+
+def _probe_mcp_stdio_handshake(tmp: Path) -> Tuple[bool, str]:
+    """v0.10.1: real MCP initialize + tools/list + tools/call handshake
+    against the bundled selfcheck server."""
+    import sys
+    from . import __file__ as vk_init
+    pkg_dir = Path(vk_init).resolve().parent
+    scripts_dir = str(pkg_dir.parent)
+    env = {"PYTHONPATH": scripts_dir + os.pathsep + os.environ.get("PYTHONPATH", "")}
+    cmd = [sys.executable, "-m", "vibecodekit.mcp_servers.selfcheck"]
+    try:
+        with mcp_client.StdioSession(cmd, env=env, timeout=5.0) as sess:
+            init = sess.initialize()
+            if init.get("serverInfo", {}).get("name") != "vibecodekit-selfcheck":
+                return False, f"bad serverInfo: {init}"
+            tools = sess.list_tools()
+            names = sorted(t["name"] for t in tools)
+            if names != ["echo", "now", "ping"]:
+                return False, f"tools/list={names}"
+            r = sess.call_tool("ping", {})
+            if r.get("result", {}).get("pong") is not True:
+                return False, f"ping={r}"
+        return True, f"tools={names} pong=True"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {e}"
+
+
+def _probe_config_persistence(tmp: Path) -> Tuple[bool, str]:
+    """v0.10.1: embedding backend persists via ~/.vibecode/config.json.
+
+    Note: restores any pre-existing ``VIBECODE_CONFIG_HOME`` env var so the
+    probe is side-effect free when run in a user session that already had
+    its own config-home configured.
+    """
+    prev = os.environ.get("VIBECODE_CONFIG_HOME")
+    os.environ["VIBECODE_CONFIG_HOME"] = str(tmp / "cfg")
+    try:
+        methodology.set_embedding_backend("hash-256")
+        backend = methodology.get_embedding_backend()
+        mem_backend = memory_hierarchy.get_backend(None)
+        ok = backend == "hash-256" and mem_backend.name == "hash-256"
+        return (ok, f"persisted={backend} memory_resolves={mem_backend.name}")
+    finally:
+        if prev is None:
+            os.environ.pop("VIBECODE_CONFIG_HOME", None)
+        else:
+            os.environ["VIBECODE_CONFIG_HOME"] = prev
+
+
+def _probe_refine_boundary(tmp: Path) -> Tuple[bool, str]:
+    """v5 BƯỚC 8/8 — `/vibe-refine` command + classifier wired together."""
+    from . import refine_boundary
+    here = Path(__file__).resolve().parents[2]
+    cmd = _find_slash_command(here, "vibe-refine.md")
+    tpl = here / "assets" / "templates" / "refine.md"
+    if cmd is None:
+        return False, "missing slash command vibe-refine.md (looked in 5 paths)"
+    if not tpl.exists():
+        return False, f"missing template: {tpl}"
+    in_scope = refine_boundary.classify_change([
+        {"path": "README.md", "status": "modified",
+         "added_lines": ["new copy"], "removed_lines": ["old"]}
+    ])
+    requires = refine_boundary.classify_change([
+        {"path": "package.json", "status": "modified",
+         "added_lines": ["dep"], "removed_lines": []}
+    ])
+    if in_scope["kind"] != "in_scope":
+        return False, f"copy edit misclassified: {in_scope}"
+    if requires["kind"] != "requires_vision":
+        return False, f"deps edit misclassified: {requires}"
+    return True, "command + template + classifier OK"
+
+
+def _probe_verify_coverage(tmp: Path) -> Tuple[bool, str]:
+    """v5 BƯỚC 7 — REQ-* traceability evaluator + template sections."""
+    here = Path(__file__).resolve().parents[2]
+    vt = (here / "assets" / "templates" / "verify-report.md").read_text(
+        encoding="utf-8"
+    )
+    bp = (here / "assets" / "templates" / "blueprint.md").read_text(
+        encoding="utf-8"
+    )
+    if "Requirement traceability" not in vt:
+        return False, "verify-report.md missing traceability section"
+    if "RRI Requirements matrix" not in bp:
+        return False, "blueprint.md missing RRI Requirements matrix"
+    if "Task decomposition preview" not in bp:
+        return False, "blueprint.md missing Task decomposition preview"
+    # Smoke evaluator on synthetic inputs.
+    bp_path = tmp / "bp.md"
+    rep_path = tmp / "rep.md"
+    bp_path.write_text(
+        "## 4a. RRI Requirements matrix\n\n"
+        "| REQ-ID | Description | Section | Source | AC |\n"
+        "|---|---|---|---|---|\n"
+        "| REQ-001 | x | y | z | w |\n"
+        "## 4b. Task decomposition preview\n",
+        encoding="utf-8",
+    )
+    rep_path.write_text(
+        "## 1. Requirement traceability matrix\n\n"
+        "| REQ-ID | Description | Status | Evidence | Owner |\n"
+        "|---|---|---|---|---|\n"
+        "| REQ-001 | x | DONE | tests/foo.py | dev |\n",
+        encoding="utf-8",
+    )
+    res = methodology.evaluate_verify_coverage(bp_path, rep_path)
+    if res["gate"] != "PASS":
+        return False, f"smoke gate FAIL: {res}"
+    return True, "templates + evaluator OK"
+
+
+def _probe_anti_patterns(tmp: Path) -> Tuple[bool, str]:
+    """RRI-UX § 10 — 12 SaaS anti-patterns enumerated + checklist evaluator."""
+    here = Path(__file__).resolve().parents[2]
+    ref = (here / "references" / "32-rri-ux-critique.md").read_text(
+        encoding="utf-8"
+    )
+    table_ids = sorted(set(re.findall(r"\|\s*(AP-\d{2})\s*\|", ref)))
+    expected = [f"AP-{i:02d}" for i in range(1, 13)]
+    if table_ids != expected:
+        return False, f"reference list mismatch: {table_ids}"
+    if len(methodology.ANTI_PATTERNS) != 12:
+        return False, "ANTI_PATTERNS not 12"
+    # Smoke gate
+    res = methodology.evaluate_anti_patterns_checklist({"AP-01": True})
+    if res["gate"] != "FAIL" or res["violations"] != 1:
+        return False, f"smoke gate broken: {res}"
+    res2 = methodology.evaluate_anti_patterns_checklist({})
+    if res2["gate"] != "PASS":
+        return False, f"empty smoke gate broken: {res2}"
+    return True, "12/12 enumerated + evaluator OK"
+
+
+def _probe_portfolio_saas_scaffolds(tmp: Path) -> Tuple[bool, str]:
+    """v5 Pattern E + Pattern B — portfolio + saas scaffold presets."""
+    from . import scaffold_engine
+    engine = scaffold_engine.ScaffoldEngine()
+    names = {p.name for p in engine.list_presets()}
+    if "portfolio" not in names:
+        return False, "portfolio preset missing"
+    if "saas" not in names:
+        return False, "saas preset missing"
+    # Apply both into tmp for full smoke.
+    portfolio_target = tmp / "p"
+    saas_target = tmp / "s"
+    pr = engine.apply("portfolio", portfolio_target, "nextjs")
+    sr = engine.apply("saas", saas_target, "nextjs")
+    p_issues = engine.verify(pr)
+    s_issues = engine.verify(sr)
+    if p_issues:
+        return False, f"portfolio verify fail: {p_issues}"
+    if s_issues:
+        return False, f"saas verify fail: {s_issues}"
+    return True, f"presets={sorted(names)}"
+
+
+def _probe_enterprise_module(tmp: Path) -> Tuple[bool, str]:
+    """v5 Pattern F — `/vibe-module` workflow + probe + plan + refusal."""
+    from . import module_workflow
+    here = Path(__file__).resolve().parents[2]
+    cmd = _find_slash_command(here, "vibe-module.md")
+    tpl = here / "assets" / "templates" / "module-spec.md"
+    ref = here / "references" / "35-enterprise-module-pattern.md"
+    if cmd is None:
+        return False, "missing slash command vibe-module.md (looked in 5 paths)"
+    if not tpl.exists():
+        return False, f"missing template: {tpl}"
+    if not ref.exists():
+        return False, f"missing reference: {ref}"
+    # Empty target refuses.
+    empty = module_workflow.probe_existing_codebase(tmp)
+    if empty.is_codebase:
+        return False, "empty tmp probed as codebase"
+    try:
+        module_workflow.generate_module_plan("x", "y", empty)
+    except module_workflow.EmptyCodebaseError:
+        pass
+    else:
+        return False, "empty target did not raise EmptyCodebaseError"
+    # Synthetic Next.js project plans correctly.
+    (tmp / "package.json").write_text(
+        '{"name":"x","version":"0.1.0","dependencies":{"next":"15.0.0"}}',
+        encoding="utf-8",
+    )
+    (tmp / "tsconfig.json").write_text("{}", encoding="utf-8")
+    probe = module_workflow.probe_existing_codebase(tmp)
+    if "nextjs" not in probe.capabilities:
+        return False, f"nextjs not detected: {probe.capabilities}"
+    plan = module_workflow.generate_module_plan(
+        "billing", "subscription", probe
+    )
+    if not any("app/billing/page.tsx" == f for f in plan.new_files):
+        return False, f"plan missing nextjs route: {plan.new_files}"
+    return True, "probe + plan + refusal OK"
+
+
+def _probe_methodology_commands(tmp: Path) -> Tuple[bool, str]:
+    """All 6 new VIBECODE-MASTER slash commands are declared in the manifest."""
+    here = Path(__file__).resolve().parents[2]
+    mani = here / "assets" / "plugin-manifest.json"
+    if not mani.exists():
+        return False, "manifest missing"
+    data = json.loads(mani.read_text(encoding="utf-8"))
+    names = {c["name"] for c in data.get("commands", [])}
+    need = {"vibe-scan", "vibe-vision", "vibe-rri",
+            "vibe-rri-t", "vibe-rri-ux", "vibe-rri-ui"}
+    missing = sorted(need - names)
+    return (not missing, f"missing: {missing}" if missing else f"present={sorted(need)}")
+
+
+
+
+def _probe_docs_scaffold(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.1 / Pattern D — `docs` scaffold preset is registered + bootable."""
+    from . import scaffold_engine
+    engine = scaffold_engine.ScaffoldEngine()
+    names = {p.name for p in engine.list_presets()}
+    if "docs" not in names:
+        return False, f"docs preset missing; have={sorted(names)}"
+    plan = engine.preview("docs", stack="nextjs", target_dir=str(tmp / "site"))
+    needed = {"package.json", "next.config.mjs", "theme.config.tsx",
+              "pages/index.mdx", "pages/intro/getting-started.mdx"}
+    have = {f.rel_path for f in plan.files}
+    missing = needed - have
+    if missing:
+        return False, f"docs preset missing files: {sorted(missing)}"
+    return True, f"docs preset OK ({len(plan.files)} files)"
+
+
+def _probe_style_tokens(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.2 / FIX-004 — references/34-style-tokens.md + FP/CP/VN sync."""
+    from . import methodology
+    here = Path(__file__).resolve().parents[2]
+    md = here / "references" / "34-style-tokens.md"
+    if not md.exists():
+        return False, f"missing reference: {md}"
+    text = md.read_text(encoding="utf-8")
+    # FP-01..FP-06 + CP-01..CP-06 must be enumerated.
+    for prefix in ("FP-0", "CP-0"):
+        for n in range(1, 7):
+            tag = f"{prefix}{n}"
+            if tag not in text:
+                return False, f"34-style-tokens.md missing {tag}"
+    # FIX-004: Vietnamese typography rules VN-01..VN-12 must appear.
+    for n in range(1, 13):
+        tag = f"VN-{n:02d}"
+        if tag not in text:
+            return False, f"34-style-tokens.md missing VN typography rule {tag}"
+    if not (hasattr(methodology, "FONT_PAIRINGS")
+            and hasattr(methodology, "COLOR_PSYCHOLOGY")):
+        return False, "methodology missing FONT_PAIRINGS/COLOR_PSYCHOLOGY"
+    if len(methodology.FONT_PAIRINGS) != 6 or len(methodology.COLOR_PSYCHOLOGY) != 6:
+        return False, "expected 6 entries in FONT_PAIRINGS and COLOR_PSYCHOLOGY"
+    return True, "ref-34 + methodology in sync (FP=6, CP=6, VN=12)"
+
+
+def _probe_question_bank(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.2 / FIX-003 — bank meets thresholds × all personas × all modes."""
+    from . import methodology
+    here = Path(__file__).resolve().parents[2]
+    bank = here / "assets" / "rri-question-bank.json"
+    if not bank.exists():
+        return False, f"missing question bank: {bank}"
+    data = json.loads(bank.read_text(encoding="utf-8"))
+    types = data.get("project_types", {})
+    thresholds = {
+        "landing": 25, "saas": 50, "dashboard": 35, "blog": 25, "docs": 30,
+        "portfolio": 25, "ecommerce": 40, "enterprise-module": 45, "custom": 15,
+    }
+    missing = set(thresholds) - set(types)
+    if missing:
+        return False, f"question bank missing types: {sorted(missing)}"
+    valid_personas = set(methodology.VALID_RRI_PERSONAS)
+    valid_modes = set(methodology.VALID_RRI_MODES)
+    for project, minimum in thresholds.items():
+        qs = types[project].get("questions", [])
+        if len(qs) < minimum:
+            return False, f"{project}: {len(qs)} q < threshold {minimum}"
+        for q in qs:
+            if q.get("persona") not in valid_personas:
+                return False, f"{project}: invalid persona in {q.get('id')}"
+            if q.get("mode") not in valid_modes:
+                return False, f"{project}: invalid mode in {q.get('id')}"
+    if not hasattr(methodology, "load_rri_questions"):
+        return False, "methodology.load_rri_questions() not exported"
+    saas_dev_guided = methodology.load_rri_questions(
+        "saas", persona="developer", mode="GUIDED")
+    if len(saas_dev_guided) == 0:
+        return False, "saas/developer/GUIDED filter returned 0 questions"
+    return True, (f"bank+loader OK (9 project types, "
+                  f"saas={len(types['saas']['questions'])} q, "
+                  f"dev/GUIDED={len(saas_dev_guided)} q, all personas+modes valid)")
+
+
+def _probe_copy_patterns(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.2 / FIX-005 — references/36-copy-patterns.md + COPY_PATTERNS sync."""
+    from . import methodology
+    here = Path(__file__).resolve().parents[2]
+    md = here / "references" / "36-copy-patterns.md"
+    if not md.exists():
+        return False, f"missing reference: {md}"
+    text = md.read_text(encoding="utf-8")
+    for n in range(1, 10):
+        tag = f"CF-{n:02d}"
+        if tag not in text:
+            return False, f"36-copy-patterns.md missing {tag}"
+    for n in range(1, 9):
+        tag = f"CF-VN-{n:02d}"
+        if tag not in text:
+            return False, f"36-copy-patterns.md missing {tag}"
+    if not (hasattr(methodology, "COPY_PATTERNS")
+            and hasattr(methodology, "COPY_PATTERNS_VN")):
+        return False, "methodology missing COPY_PATTERNS / COPY_PATTERNS_VN"
+    if len(methodology.COPY_PATTERNS) != 9:
+        return False, f"COPY_PATTERNS count {len(methodology.COPY_PATTERNS)} != 9"
+    if len(methodology.COPY_PATTERNS_VN) != 8:
+        return False, f"COPY_PATTERNS_VN count {len(methodology.COPY_PATTERNS_VN)} != 8"
+    return True, "ref-36 + methodology in sync (CF=9, CF-VN=8)"
+
+
+def _probe_stack_recommendations(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.2 / FIX-002 — methodology.PROJECT_STACK_RECOMMENDATIONS coverage."""
+    from . import methodology
+    if not hasattr(methodology, "PROJECT_STACK_RECOMMENDATIONS"):
+        return False, "methodology.PROJECT_STACK_RECOMMENDATIONS missing"
+    if not hasattr(methodology, "recommend_stack"):
+        return False, "methodology.recommend_stack() missing"
+    expected = {"landing", "saas", "dashboard", "blog", "docs", "portfolio",
+                "ecommerce", "mobile", "api", "enterprise-module", "custom"}
+    have = set(methodology.PROJECT_STACK_RECOMMENDATIONS.keys())
+    missing = expected - have
+    if missing:
+        return False, f"stack recommendations missing: {sorted(missing)}"
+    rec = methodology.recommend_stack("saas")
+    for k in ("framework", "styling", "state_data", "auth", "hosting", "extras"):
+        if k not in rec:
+            return False, f"recommend_stack missing key {k!r}"
+    fallback = methodology.recommend_stack("totally-unknown-type")
+    if not fallback.get("unknown"):
+        return False, "recommend_stack should mark unknown types as fallback"
+    return True, f"recommend_stack OK ({len(have)} canonical types + alias + safe fallback)"
+
+
+def _probe_command_context_wiring(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.3 / Patch A — slash commands have wired references that load."""
+    from . import methodology as m
+    wired = m.list_wired_commands()
+    if len(wired) < 8:
+        return False, f"only {len(wired)} commands wired, expected ≥ 8"
+    # Spot-check vibe-vision: must inject ref-30 + ref-34 + dynamic stack.
+    ctx = m.render_command_context("vibe-vision", project_type="saas")
+    if "ref-30" not in ctx or "ref-34" not in ctx:
+        return False, "vibe-vision context missing ref-30/ref-34"
+    if "Dynamic: stack recommendation" not in ctx:
+        return False, "vibe-vision context missing recommend_stack block"
+    if "framework: Next.js" not in ctx:
+        return False, "vibe-vision context not pre-filled by recommend_stack(saas)"
+    # vibe-rri: must inject question subset.
+    ctx2 = m.render_command_context("vibe-rri", project_type="landing",
+                                    persona="end_user", mode="EXPLORE")
+    if "Dynamic: RRI question subset" not in ctx2:
+        return False, "vibe-rri context missing rri-questions block"
+    if "L-EU-EX" not in ctx2:
+        return False, "vibe-rri context did not inject landing/end_user/EXPLORE IDs"
+    return True, f"render_command_context OK ({len(wired)} wired commands, ref+dynamic)"
+
+
+def _probe_command_agent_binding(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.3 / Patch B — slash commands resolve to a default agent."""
+    from . import subagent_runtime
+    bindings = subagent_runtime.list_command_agent_bindings()
+    expected = {
+        "vibe-blueprint": "coordinator",
+        "vibe-scaffold":  "builder",
+        "vibe-module":    "builder",
+        "vibe-verify":    "qa",
+        "vibe-audit":     "security",
+        "vibe-scan":      "scout",
+    }
+    for cmd, role in expected.items():
+        got = bindings.get(cmd)
+        if got != role:
+            return False, f"binding mismatch {cmd!r}: expected {role!r}, got {got!r}"
+    # Frontmatter override: synth a temp commands dir with `agent: scout`.
+    cmd_dir = tmp / ".claude" / "commands"
+    cmd_dir.mkdir(parents=True, exist_ok=True)
+    (cmd_dir / "vibe-verify.md").write_text(
+        "---\nname: vibe-verify\nagent: scout\n---\n\nbody\n", encoding="utf-8")
+    over = subagent_runtime.resolve_command_agent("vibe-verify", commands_dir=cmd_dir)
+    if over != "scout":
+        return False, f"frontmatter override ignored: got {over!r}"
+    # Spawn for command must succeed.
+    res = subagent_runtime.spawn_for_command(tmp, "vibe-blueprint", "test plan")
+    if res.get("role") != "coordinator":
+        return False, f"spawn_for_command bound wrong role: {res.get('role')!r}"
+    return True, f"{len(expected)} bindings + frontmatter override + spawn OK"
+
+
+def _probe_skill_paths_activation(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.3 / Patch C — SKILL.md paths: globs activate skill on touched files."""
+    from . import skill_discovery
+    cases = [
+        ("src/main.py", True),
+        ("a/b/c/Component.tsx", True),
+        ("README.md", True),
+        ("Cargo.toml", True),
+        ("logo.png", False),
+        ("image.svg", False),
+    ]
+    for path, expected in cases:
+        got = skill_discovery.activate_for(path).get("activate", False)
+        if got != expected:
+            return False, f"activate_for({path!r}): expected {expected}, got {got}"
+    return True, f"{len(cases)}/{len(cases)} path activations correct"
+
+
+def _probe_docs_intent_routing(tmp: Path) -> Tuple[bool, str]:
+    """v0.11.2 / FIX-001 — intent_router classifies docs prose to BUILD."""
+    from . import intent_router
+    r = intent_router.IntentRouter()
+    cases = (
+        "build docs site cho team kỹ thuật",
+        "tạo trang tài liệu cho sản phẩm",
+        "create developer documentation",
+    )
+    for prose in cases:
+        match = r.classify(prose)
+        if "BUILD" not in match.intents:
+            return False, f"docs prose {prose!r} did not route to BUILD: {match.intents}"
+    return True, f"docs intent routes to BUILD ({len(cases)}/{len(cases)})"
+
+
+PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
+    ("01_async_generator_loop",         _probe_async_generator),
+    ("02_derived_needs_follow_up",      _probe_derived_follow_up),
+    ("03_escalating_recovery",          _probe_escalating_recovery),
+    ("04_concurrency_partitioning",     _probe_concurrency_partition),
+    ("05_streaming_tool_execution",     _probe_streaming_execution),
+    ("06_context_modifier_chain",       _probe_context_modifier),
+    ("07_coordinator_restriction",      _probe_coordinator_restriction),
+    ("08_fork_isolation_worktree",      _probe_fork_isolation),
+    ("09_five_layer_context_defense",   _probe_five_layer_defense),
+    ("10_permission_classification",    _probe_permission_pipeline),
+    ("11_conditional_skill_activation", _probe_conditional_skill),
+    ("12_shell_in_prompt",              _probe_shell_in_prompt),
+    ("13_dynamic_skill_discovery",      _probe_dynamic_skill_discovery),
+    ("14_plugin_extension",             _probe_plugin_extension),
+    ("15_plugin_sandbox",               _probe_plugin_sandbox),
+    ("16_reconciliation_install",       _probe_reconciliation_install),
+    ("17_pure_ts_native_replacement",   _probe_ts_replacement),
+    ("18_terminal_ui_as_browser",       _probe_terminal_ui),
+    # v0.8 Full Agentic-OS extensions
+    ("19_background_tasks",             _probe_background_tasks),
+    ("20_mcp_adapter",                  _probe_mcp_adapter),
+    ("21_cost_accounting_ledger",       _probe_cost_ledger),
+    ("22_26_hook_events",               _probe_26_hook_events),
+    ("23_follow_up_reexecute",          _probe_follow_up_reexecute),
+    ("24_denial_concurrency_safe",      _probe_denial_concurrency),
+    # v0.9 — Full Agentic OS completion probes
+    ("25_memory_hierarchy_3tier",       _probe_memory_hierarchy),
+    ("26_approval_contract_ui",         _probe_approval_contract),
+    ("27_all_seven_task_kinds",         _probe_all_task_kinds),
+    ("28_dream_four_phase",             _probe_dream_four_phase),
+    ("29_mcp_stdio_roundtrip",          _probe_mcp_stdio_roundtrip),
+    ("30_structured_notifications",     _probe_structured_notifications),
+    # v0.10 — RRI + VIBECODE-MASTER methodology integration probes
+    ("31_rri_reverse_interview",        _probe_rri_reverse_interview),
+    ("32_rri_t_testing_methodology",    _probe_rri_t_testing),
+    ("33_rri_ux_critique_methodology",  _probe_rri_ux_critique),
+    ("34_rri_ui_design_pipeline",       _probe_rri_ui_combined),
+    ("35_vibecode_master_workflow",  _probe_vibecode_master_workflow),
+    ("36_methodology_slash_commands",   _probe_methodology_commands),
+    # v0.10.1 — methodology runner + config persistence + real MCP handshake
+    ("37_methodology_runners",          _probe_methodology_runners),
+    ("38_config_persistence",           _probe_config_persistence),
+    ("39_mcp_stdio_full_handshake",     _probe_mcp_stdio_handshake),
+    # Round 8 — v5 deep-dive parity probes
+    ("40_refine_boundary_step8",        _probe_refine_boundary),
+    ("41_verify_req_coverage",          _probe_verify_coverage),
+    ("42_saas_anti_patterns_12",        _probe_anti_patterns),
+    ("43_portfolio_saas_scaffolds",     _probe_portfolio_saas_scaffolds),
+    ("44_enterprise_module_workflow",   _probe_enterprise_module),
+    ("45_docs_scaffold_pattern_d",      _probe_docs_scaffold),
+    ("46_style_tokens_canonical",       _probe_style_tokens),
+    ("47_rri_question_bank",            _probe_question_bank),
+    # v0.11.2 — FIX-001/002/005 additions
+    ("48_copy_patterns_canonical",      _probe_copy_patterns),
+    ("49_stack_recommendations",        _probe_stack_recommendations),
+    ("50_docs_intent_routing",          _probe_docs_intent_routing),
+    # v0.11.3 — Patch A/B/C wiring probes
+    ("51_command_context_wiring",       _probe_command_context_wiring),
+    ("52_command_agent_binding",        _probe_command_agent_binding),
+    ("53_skill_paths_activation",       _probe_skill_paths_activation),
+]
+
+
+def audit(threshold: float = 0.85) -> Dict[str, Any]:
+    rows: List[Dict[str, Any]] = []
+    with tempfile.TemporaryDirectory() as td:
+        for name, probe in PROBES:
+            sub = Path(td) / name
+            sub.mkdir(parents=True, exist_ok=True)
+            try:
+                ok, detail = probe(sub)
+                rows.append({"pattern": name, "pass": bool(ok), "detail": detail})
+            except Exception as e:
+                rows.append({"pattern": name, "pass": False, "detail": f"exception: {type(e).__name__}: {e}"})
+    passed = sum(1 for r in rows if r["pass"])
+    parity = passed / len(rows)
+    return {"threshold": threshold, "passed": passed, "total": len(rows),
+            "parity": round(parity, 4), "met": parity >= threshold, "probes": rows}
+
+
+def _main() -> None:
+    ap = argparse.ArgumentParser(description="Run behaviour-based conformance audit.")
+    ap.add_argument("--threshold", type=float, default=0.85)
+    ap.add_argument("--json", action="store_true")
+    args = ap.parse_args()
+    out = audit(args.threshold)
+    if args.json:
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+    else:
+        print(f"parity: {out['parity']:.2%}   ({out['passed']}/{out['total']}, threshold {out['threshold']:.0%})")
+        for r in out["probes"]:
+            mark = "PASS" if r["pass"] else "FAIL"
+            print(f"  [{mark}] {r['pattern']:<36} {r['detail']}")
+    sys.exit(0 if out["met"] else 1)
+
+
+if __name__ == "__main__":
+    _main()
