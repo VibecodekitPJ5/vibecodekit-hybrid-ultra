@@ -1,0 +1,73 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vibecodekit-hybrid-ultra"
+version = "0.12.0"
+description = "Defensive, audit-driven runtime + skill bundle for AI-assisted coding workflows. VIBECODE-MASTER methodology + RRI question banks + permission engine + scaffold engine + 67-probe audit + sub-second browser daemon."
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+authors = [
+    { name = "VibecodeKit Hybrid Ultra contributors" },
+]
+keywords = ["claude-code", "agentic", "skill", "vibecode", "rri", "vibecodekit"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development",
+]
+# Core runtime: stdlib-only — preserves the "Python-pure" DNA.
+dependencies = []
+
+[project.optional-dependencies]
+# `pip install "vibecodekit-hybrid-ultra[browser]"` to enable /vck-qa and the
+# sub-second Python browser daemon (architecture inspired by gstack/browse).
+browser = [
+    "playwright>=1.40.0",
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.27.0",
+    "httpx>=0.26.0",
+]
+# `pip install "vibecodekit-hybrid-ultra[ml]"` reserved for v0.14 ML security
+# stack (ONNX prompt-injection classifier + ensemble verifier).
+ml = [
+    "onnxruntime>=1.17.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
+all = [
+    "vibecodekit-hybrid-ultra[browser,ml,dev]",
+]
+
+[project.urls]
+Homepage = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra"
+Issues = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra/issues"
+Changelog = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra/blob/main/CHANGELOG.md"
+
+[project.scripts]
+vibecodekit = "vibecodekit.cli:main"
+
+[tool.setuptools]
+package-dir = { "" = "scripts" }
+
+[tool.setuptools.packages.find]
+where = ["scripts"]
+include = ["vibecodekit*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = [
+    "browser: requires the [browser] optional extras (playwright, fastapi, uvicorn).",
+]

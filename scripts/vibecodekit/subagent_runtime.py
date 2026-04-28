@@ -77,6 +77,18 @@ PROFILES: Dict[str, Dict[str, Any]] = {
         "permission_mode": "plan",
         "description": "Security audit only.",
     },
+    "reviewer": {
+        "can_mutate": False,
+        "tools": _READ_ONLY_TOOLS + ["run_command"],
+        "permission_mode": "plan",
+        "description": "Adversarial multi-perspective code review (7 specialists); read-only.",
+    },
+    "qa-lead": {
+        "can_mutate": False,
+        "tools": _READ_ONLY_TOOLS + ["run_command"],
+        "permission_mode": "plan",
+        "description": "Real-browser QA lead — coordinates checklist VN-12 + fix-loop proposals; read-only.",
+    },
 }
 
 
@@ -244,6 +256,14 @@ DEFAULT_COMMAND_AGENT: Dict[str, str] = {
     "vibe-verify":    "qa",
     "vibe-audit":     "security",
     "vibe-scan":      "scout",
+    # v0.12.0 — VCK-* gstack-inspired specialist commands.
+    "vck-review":     "reviewer",
+    "vck-cso":        "security",
+    "vck-qa":         "qa-lead",
+    "vck-qa-only":    "qa-lead",
+    "vck-investigate": "scout",
+    "vck-canary":     "qa",
+    "vck-ship":       "coordinator",
 }
 
 

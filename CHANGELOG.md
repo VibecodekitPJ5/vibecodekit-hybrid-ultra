@@ -4,6 +4,70 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.12.0] — gstack integration Phase 1+2 (browser daemon + 6 specialist skills)
+
+First minor release after v0.11.4.1.  Introduces the first round of
+features adapted (with attribution) from
+[gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
+commit `675717e3`) — see `LICENSE-third-party.md` for the full
+attribution manifest.
+
+### Added
+
+* **`LICENSE` (MIT) + `LICENSE-third-party.md`** — the repo is now
+  explicitly MIT-licensed.  The third-party file enumerates every
+  gstack-adapted artefact with commit SHA and scope.
+* **`pyproject.toml`** — PEP 621 metadata.  Core remains stdlib-only;
+  `[browser]` / `[ml]` / `[dev]` / `[all]` optional extras are
+  introduced to isolate the new third-party dependencies behind
+  explicit opt-in.
+* **Browser daemon (`scripts/vibecodekit/browser/`, ~1.5 kLOC Python)**
+  — clean-room reimplementation of gstack's persistent-daemon
+  architecture.  9 modules: `state` (atomic 0o600 state file +
+  idle-timeout), `security` (datamarking envelope + hidden-element
+  strip + bidi/ctrl-char sanitisation + URL blocklist),
+  `permission` (bridge to the existing permission engine — every
+  browser command is classified), `snapshot` (ARIA tree +
+  stable-hash DOM diff), `commands_read` / `commands_write`
+  (verb executors with swappable runners — testable without
+  playwright installed), `cli_adapter` (stdlib-only HTTP client),
+  `manager` + `server` (playwright + FastAPI, extras-only).
+* **7 specialist slash commands (`/vck-cso`, `/vck-review`, `/vck-qa`,
+  `/vck-qa-only`, `/vck-ship`, `/vck-investigate`, `/vck-canary`)**
+  — Vietnamese-first adaptations of the corresponding gstack
+  skills.  Each command file carries an `inspired-by:` frontmatter
+  line pointing at the gstack source commit.
+* **2 new agent roles (`reviewer`, `qa-lead`)** — read-only agents
+  wired into `subagent_runtime.PROFILES` and
+  `DEFAULT_COMMAND_AGENT`.
+* **`references/40-ethos-vck.md`** — ETHOS adaptation (Boil the
+  Lake / Search Before Building / User Sovereignty / Build for
+  Yourself) mapped onto the VIBECODE-MASTER 8-step workflow.
+* **Intent router (+6 VCK-\* intents)** — high-specificity phrases
+  only, so generic "review" / "ship" / "qa" prose still routes to
+  the existing `/vibe-*` pipeline.
+* **Audit probes #54 – #67** — 9 browser-layer probes and 5 skill-v2
+  probes; the conformance audit is extended from 53 to 67 without
+  modifying any existing probe.
+* **Tests (`tests/browser/`, 46 new cases)** — atomic-write guard,
+  0o600 permissions, envelope wrap, hidden-element strip,
+  bidi/ctrl-char strip, URL blocklist (loopback allowed, IMDS
+  refused), permission-engine pipeline verification.
+
+### Changed
+
+* **`SKILL.md`, `manifest.llm.json`, `update-package/VERSION`,
+  `update-package/.claw.json`, `assets/plugin-manifest.json`,
+  root `VERSION`** — version bumped to `0.12.0` and the 7 new
+  `/vck-*` triggers listed under `triggers:`.
+
+### Migration notes
+
+Existing users see **no runtime change** unless they explicitly
+opt in to `pip install "vibecodekit-hybrid-ultra[browser]"`.  All
+26 existing `/vibe-*` commands and all 53 existing audit probes
+remain bit-identical.
+
 ## [0.11.4.1] — Root-safe tests & canonical gate clarification
 
 Test-harness and release-gate polish only; runtime is bit-identical

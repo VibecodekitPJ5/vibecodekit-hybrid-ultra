@@ -1060,6 +1060,251 @@ def _probe_docs_intent_routing(tmp: Path) -> Tuple[bool, str]:
     return True, f"docs intent routes to BUILD ({len(cases)}/{len(cases)})"
 
 
+# ---------------------------------------------------------------------------
+# v0.12.0 — Browser daemon probes (#54 – #62) + Skill v2 probes (#63 – #67)
+# ---------------------------------------------------------------------------
+# The browser daemon is a *clean-room* Python reimplementation of gstack's
+# persistent-daemon architecture.  These probes verify that the runtime
+# guarantees (atomic state file, permission routing, content sanitisation,
+# URL blocklist, envelope wrap, …) match the contract documented in
+# ``scripts/vibecodekit/browser/__init__.py``.
+
+
+def _probe_browser_state_atomic(tmp: Path) -> Tuple[bool, str]:
+    """#54 — state file is written atomically at 0o600."""
+    import os
+    import stat as _stat
+
+    from . import browser
+    target = tmp / ".vibecode" / "browser.json"
+    s = browser.state.BrowserState(pid=os.getpid(), port=12345)
+    browser.state.write_state(s, path=target)
+    if not target.exists():
+        return False, "state file not created"
+    mode = _stat.S_IMODE(os.stat(target).st_mode)
+    if mode != 0o600:
+        return False, f"state file mode 0o{mode:o} != 0o600"
+    return True, "atomic 0o600 write confirmed"
+
+
+def _probe_browser_idle_timeout_default(tmp: Path) -> Tuple[bool, str]:
+    """#55 — idle-timeout default is exactly 30 minutes."""
+    from . import browser
+    v = browser.state.DEFAULT_IDLE_TIMEOUT_SECONDS
+    if v != 30 * 60:
+        return False, f"default idle timeout {v}s != 1800s"
+    return True, "idle-timeout default = 30 min"
+
+
+def _probe_browser_port_selection(tmp: Path) -> Tuple[bool, str]:
+    """#56 — port selection picks a free port in the documented range."""
+    from . import browser
+    port = browser.state.select_port()
+    low, high = browser.state.PORT_RANGE
+    if not (low <= port < high):
+        return False, f"port {port} outside [{low}, {high})"
+    return True, f"selected free port {port} in [{low}, {high})"
+
+
+def _probe_browser_cookie_path(tmp: Path) -> Tuple[bool, str]:
+    """#57 — cookie path round-trips through state.json."""
+    import os
+
+    from . import browser
+    target = tmp / ".vibecode" / "browser.json"
+    s = browser.state.BrowserState(pid=os.getpid(), port=1,
+                                   cookie_path=str(tmp / "cookies.json"))
+    browser.state.write_state(s, path=target)
+    re = browser.state.read_state(path=target)
+    if re is None or re.cookie_path != str(tmp / "cookies.json"):
+        return False, "cookie path did not round-trip"
+    return True, "cookie path persists across read/write"
+
+
+def _probe_browser_permission_routed(tmp: Path) -> Tuple[bool, str]:
+    """#58 — every browser command routes through permission_engine.classify_cmd."""
+    from . import browser
+    klass, reason = browser.permission.classify("goto", "https://example.com")
+    if klass not in {"read_only", "verify", "mutation", "high_risk", "blocked"}:
+        return False, f"classify returned unknown class: {klass!r}"
+    if not reason:
+        return False, "classify returned empty reason"
+    return True, f"permission classified browser:goto → {klass}"
+
+
+def _probe_browser_envelope_wrap(tmp: Path) -> Tuple[bool, str]:
+    """#59 — untrusted snapshot content is envelope-wrapped."""
+    from . import browser
+    wrapped = browser.security.wrap_untrusted("Hello from page")
+    if not browser.security.is_wrapped(wrapped):
+        return False, "wrap_untrusted output not recognised as wrapped"
+    # Idempotent.
+    if browser.security.wrap_untrusted(wrapped) != wrapped:
+        return False, "wrap_untrusted not idempotent"
+    return True, "untrusted envelope wrap + idempotent"
+
+
+def _probe_browser_hidden_strip(tmp: Path) -> Tuple[bool, str]:
+    """#60 — aria-hidden / display:none subtrees are stripped."""
+    from . import browser
+    tree = {
+        "tag": "div",
+        "attrs": {},
+        "children": [
+            {"tag": "span", "attrs": {"aria-hidden": "true"}, "text": "secret"},
+            {"tag": "p",    "attrs": {}, "text": "visible"},
+        ],
+    }
+    out = browser.security.strip_hidden(tree)
+    if out is None or len(out["children"]) != 1 or out["children"][0]["text"] != "visible":
+        return False, f"hidden strip failed: {out!r}"
+    return True, "aria-hidden subtree stripped"
+
+
+def _probe_browser_bidi_sanitisation(tmp: Path) -> Tuple[bool, str]:
+    """#61 — RTL overrides / zero-width joiners are removed from page text."""
+    from . import browser
+    cleaned = browser.security.sanitise_text("Hello \u202EevilRTL\u200b")
+    if "\u202E" in cleaned or "\u200b" in cleaned:
+        return False, f"bidi/zwj leaked through: {cleaned!r}"
+    return True, "bidi/zwj characters stripped"
+
+
+def _probe_browser_url_blocklist(tmp: Path) -> Tuple[bool, str]:
+    """#62 — URL blocklist refuses IMDS / file:/ / javascript: etc."""
+    from . import browser
+    bad = (
+        "http://169.254.169.254/latest/meta-data/",
+        "file:///etc/passwd",
+        "javascript:alert(1)",
+        "chrome://flags",
+    )
+    for u in bad:
+        v = browser.security.classify_url(u)
+        if v.allowed:
+            return False, f"url policy accepted dangerous URL: {u!r}"
+    good = browser.security.classify_url("http://localhost:3000/")
+    if not good.allowed:
+        return False, "url policy refused loopback (regression)"
+    return True, f"blocklist rejected {len(bad)} dangerous URLs; loopback allowed"
+
+
+_VCK_COMMANDS = (
+    "vck-cso", "vck-review", "vck-qa", "vck-qa-only",
+    "vck-ship", "vck-investigate", "vck-canary",
+)
+
+
+def _probe_vck_commands_present(tmp: Path) -> Tuple[bool, str]:
+    """#63 — all 7 /vck-* slash commands ship as markdown files."""
+    here = Path(__file__).resolve()
+    found: list[str] = []
+    missing: list[str] = []
+    for name in _VCK_COMMANDS:
+        p = _find_slash_command(here, f"{name}.md")
+        if p is None:
+            missing.append(name)
+        else:
+            found.append(name)
+    if missing:
+        return False, f"missing {sorted(missing)} (looked via VIBECODE_UPDATE_PACKAGE + parents)"
+    return True, f"all {len(found)} /vck-* commands locatable"
+
+
+def _probe_vck_command_frontmatter_attribution(tmp: Path) -> Tuple[bool, str]:
+    """#64 — every /vck-* command carries the gstack attribution frontmatter."""
+    here = Path(__file__).resolve()
+    bad: list[str] = []
+    checked = 0
+    for name in _VCK_COMMANDS:
+        p = _find_slash_command(here, f"{name}.md")
+        if p is None:
+            return False, f"cannot locate {name}.md to check attribution"
+        text = p.read_text(encoding="utf-8")
+        checked += 1
+        if "inspired-by:" not in text or "gstack" not in text:
+            bad.append(name)
+    if bad:
+        return False, f"missing attribution in: {bad}"
+    return True, f"attribution frontmatter present on all {checked} /vck-* commands"
+
+
+def _probe_vck_agents_registered(tmp: Path) -> Tuple[bool, str]:
+    """#65 — reviewer + qa-lead agents are in subagent_runtime PROFILES."""
+    from . import subagent_runtime as sr
+    required = {"reviewer", "qa-lead"}
+    missing = required - set(sr.PROFILES)
+    if missing:
+        return False, f"missing profiles: {sorted(missing)}"
+    for role in required:
+        if sr.PROFILES[role].get("can_mutate", True):
+            return False, f"agent {role!r} is not read-only"
+    return True, "reviewer + qa-lead profiles registered read-only"
+
+
+def _probe_vck_command_agent_binding(tmp: Path) -> Tuple[bool, str]:
+    """#66 — /vck-* commands bind to the right agent roles."""
+    from . import subagent_runtime as sr
+    want = {
+        "vck-review": "reviewer",
+        "vck-cso": "security",
+        "vck-qa": "qa-lead",
+        "vck-qa-only": "qa-lead",
+        "vck-ship": "coordinator",
+    }
+    bindings = sr.list_command_agent_bindings()
+    wrong = {c: (bindings.get(c), role)
+             for c, role in want.items() if bindings.get(c) != role}
+    if wrong:
+        return False, f"wrong bindings: {wrong}"
+    return True, f"/vck-* commands bind correctly ({len(want)} checked)"
+
+
+def _probe_vck_license_attribution(tmp: Path) -> Tuple[bool, str]:
+    """#67 — LICENSE + LICENSE-third-party.md exist and attribute gstack.
+
+    Looks up candidate repo roots in order of preference:
+      1) ``$VIBECODE_UPDATE_PACKAGE/..``
+      2) parents of this module file (source checkout)
+      3) parents of the update-package dir walked back up
+
+    This keeps the probe green in both the source checkout and the
+    L3 installed-project test harness.
+    """
+    import os as _os
+    from pathlib import Path as _Path
+
+    here = _Path(__file__).resolve()
+    candidates: list[_Path] = []
+    env = _os.environ.get("VIBECODE_UPDATE_PACKAGE")
+    if env:
+        candidates.append(_Path(env).resolve().parent)
+    # Walk up to 5 parents of this module and any "ai-rules/vibecodekit"
+    # intermediate (installed layout) looking for LICENSE at the top.
+    for level in range(0, 6):
+        try:
+            candidates.append(here.parents[level])
+        except IndexError:
+            break
+
+    for base in candidates:
+        lic = base / "LICENSE"
+        third = base / "LICENSE-third-party.md"
+        if not lic.is_file() or not third.is_file():
+            continue
+        body = third.read_text(encoding="utf-8")
+        if "gstack" not in body or "MIT" not in body:
+            return False, f"{third} does not attribute gstack MIT"
+        lic_body = lic.read_text(encoding="utf-8")
+        if "MIT" not in lic_body:
+            return False, f"{lic} is not MIT"
+        return True, f"MIT LICENSE + gstack attribution present under {base}"
+    return False, (
+        "LICENSE / LICENSE-third-party.md not found in any candidate root "
+        "(VIBECODE_UPDATE_PACKAGE/.. or parents of conformance_audit.py)"
+    )
+
+
 PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("01_async_generator_loop",         _probe_async_generator),
     ("02_derived_needs_follow_up",      _probe_derived_follow_up),
@@ -1121,6 +1366,22 @@ PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("51_command_context_wiring",       _probe_command_context_wiring),
     ("52_command_agent_binding",        _probe_command_agent_binding),
     ("53_skill_paths_activation",       _probe_skill_paths_activation),
+    # v0.12.0 — gstack-inspired browser daemon (9 probes)
+    ("54_browser_state_atomic",         _probe_browser_state_atomic),
+    ("55_browser_idle_timeout_default", _probe_browser_idle_timeout_default),
+    ("56_browser_port_selection",       _probe_browser_port_selection),
+    ("57_browser_cookie_path",          _probe_browser_cookie_path),
+    ("58_browser_permission_routed",    _probe_browser_permission_routed),
+    ("59_browser_envelope_wrap",        _probe_browser_envelope_wrap),
+    ("60_browser_hidden_strip",         _probe_browser_hidden_strip),
+    ("61_browser_bidi_sanitisation",    _probe_browser_bidi_sanitisation),
+    ("62_browser_url_blocklist",        _probe_browser_url_blocklist),
+    # v0.12.0 — gstack-inspired specialist skills v2 (5 probes)
+    ("63_vck_commands_present",         _probe_vck_commands_present),
+    ("64_vck_frontmatter_attribution",  _probe_vck_command_frontmatter_attribution),
+    ("65_vck_agents_registered",        _probe_vck_agents_registered),
+    ("66_vck_command_agent_binding",    _probe_vck_command_agent_binding),
+    ("67_vck_license_attribution",      _probe_vck_license_attribution),
 ]
 
 

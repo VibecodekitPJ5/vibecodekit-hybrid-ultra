@@ -173,6 +173,41 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "dashboard", "bảng điều khiển", "bang dieu khien",
         "tổng quan", "tong quan", "metrics",
     )),
+    # v0.12.0 — VCK-* gstack-inspired specialist intents.  Phrases below
+    # are intentionally HIGH-SPECIFICITY so they do not conflict with the
+    # generic SCAN/ADVISOR/SHIP routes.  Direct slash typing
+    # ("/vck-cso", "/vck-review", …) always wins through these.
+    ("VCK_CSO", (
+        "/vck-cso", "vck-cso", "chief security officer",
+        "owasp top 10", "owasp top10", "stride threat model",
+        "supply chain audit", "secrets archaeology",
+    )),
+    ("VCK_REVIEW", (
+        "/vck-review", "vck-review", "adversarial review",
+        "review army", "multi-specialist review",
+        "7-perspective review", "pre-pr review",
+    )),
+    ("VCK_QA", (
+        "/vck-qa", "vck-qa", "/vck-qa-only", "vck-qa-only",
+        "real browser qa", "real-browser qa",
+        "checklist vn-12", "browser daemon qa",
+    )),
+    ("VCK_INVESTIGATE", (
+        "/vck-investigate", "vck-investigate",
+        "no-fix-without-investigation",
+        "5-why", "five why", "fishbone",
+        "root cause investigation",
+    )),
+    ("VCK_CANARY", (
+        "/vck-canary", "vck-canary",
+        "post-deploy canary", "post deploy canary",
+        "canary monitor", "30-minute canary",
+    )),
+    ("VCK_SHIP", (
+        "/vck-ship", "vck-ship",
+        "ship orchestrator", "atomic ship",
+        "test review push pr",
+    )),
 )
 
 # Synthetic pipelines: when one intent is mentioned in a high-level way
@@ -226,6 +261,13 @@ _INTENT_TO_SLASH: dict[str, str] = {
     "DASHBOARD": "/vibe-dashboard",
     "AUDIT":     "/vibe-audit",
     "INSTALL":   "/vibe-install",
+    # v0.12.0 — VCK-* gstack-inspired specialist commands.
+    "VCK_CSO":         "/vck-cso",
+    "VCK_REVIEW":      "/vck-review",
+    "VCK_QA":          "/vck-qa",
+    "VCK_INVESTIGATE": "/vck-investigate",
+    "VCK_CANARY":      "/vck-canary",
+    "VCK_SHIP":        "/vck-ship",
 }
 
 # Intents that imply a full pipeline rather than a single command.

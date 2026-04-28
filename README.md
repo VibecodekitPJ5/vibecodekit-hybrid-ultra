@@ -1,10 +1,44 @@
 # VibecodeKit Hybrid Ultra
 
-> **Current release:** [v0.11.4.1](https://github.com/ykjpalbubp/vibecodekit-hybrid-ultra/releases/tag/v0.11.4.1)
+> **Current release:** v0.12.0 ([CHANGELOG](CHANGELOG.md))
 > A defensive, audit-driven runtime + skill bundle for AI-assisted
 > coding workflows.  Ships with VIBECODE-MASTER v5 methodology,
 > RRI-T / RRI-UI / RRI-UX question banks, a permission engine,
-> a scaffold engine, and a 53-probe self-audit gate.
+> a scaffold engine, a Python-pure browser daemon, and a **67-probe
+> self-audit gate**.
+
+> **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
+> attribution manifest [`LICENSE-third-party.md`](LICENSE-third-party.md).
+
+## Skills inspired by gstack
+
+v0.12.0 introduces seven `/vck-*` slash commands and a Python browser
+daemon adapted — with attribution — from
+[gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
+commit `675717e3`):
+
+- `/vck-cso` — Chief Security Officer audit (OWASP Top 10 + STRIDE).
+- `/vck-review` — 7-perspective adversarial review (architect / security / perf / a11y / ux / dx / risk).
+- `/vck-qa`, `/vck-qa-only` — real-browser QA checklist VN-12.
+- `/vck-ship` — atomic test → review → qa → commit → push → PR.
+- `/vck-investigate` — NO-FIX-WITHOUT-INVESTIGATION root-cause flow.
+- `/vck-canary` — 30-minute post-deploy monitor.
+
+The browser daemon is a **clean-room Python reimplementation** of
+gstack's persistent-daemon architecture (atomic state file + idle
+timeout + permission-classified commands + ARIA datamarking + URL
+blocklist).  It ships stdlib-only for the core; Playwright + FastAPI
+are gated behind the `[browser]` extra:
+
+```bash
+pip install "vibecodekit-hybrid-ultra[browser]"
+playwright install chromium
+```
+
+See [`LICENSE-third-party.md`](LICENSE-third-party.md) for the full
+per-artefact attribution table and
+[`references/40-ethos-vck.md`](references/40-ethos-vck.md) for the
+ETHOS adaptation.
 
 ---
 
