@@ -264,6 +264,15 @@ DEFAULT_COMMAND_AGENT: Dict[str, str] = {
     "vck-investigate": "scout",
     "vck-canary":     "qa",
     "vck-ship":       "coordinator",
+    # v0.14.0 — plan-review + polish commands (gstack Phase 3 + 4).
+    "vck-office-hours":        "reviewer",
+    "vck-ceo-review":          "reviewer",
+    "vck-eng-review":          "reviewer",
+    "vck-design-consultation": "coordinator",
+    "vck-design-review":       "reviewer",
+    "vck-learn":               "scout",
+    "vck-retro":               "coordinator",
+    "vck-second-opinion":      "reviewer",
 }
 
 

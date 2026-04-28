@@ -61,6 +61,28 @@ except Exception as e:
     sys.exit(0)
 
 decision = decide(cmd, mode=mode)
+
+# v0.14.0 — optional ML classifier layer.  Off by default; enable by
+# setting VIBECODE_SECURITY_CLASSIFIER=1 (and installing the [ml] extras
+# for the ONNX / Haiku voters).  Even a pure-regex ensemble can upgrade
+# an "allow" to "deny" when a prompt-injection or secret-leak pattern
+# matches.  Layers self-disable when deps are missing; the hook never
+# crashes the permission path.
+if os.environ.get("VIBECODE_SECURITY_CLASSIFIER") == "1":
+    try:
+        from vibecodekit.security_classifier import load_default_classifier
+        _res = load_default_classifier().classify(cmd)
+        if _res.verdict.decision == "deny":
+            decision = {
+                "decision": "deny",
+                "reason": f"security_classifier: {_res.verdict.reason}",
+                "classifier": _res.as_dict(),
+            }
+        else:
+            decision.setdefault("classifier", _res.as_dict())
+    except Exception as exc:  # pragma: no cover — never break the hook
+        decision.setdefault("classifier_error", f"{type(exc).__name__}: {exc}")
+
 if skill_activation is not None:
     decision["skill_activation"] = skill_activation
 sys.stdout.write(json.dumps(decision))

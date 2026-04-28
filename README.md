@@ -1,10 +1,10 @@
 # VibecodeKit Hybrid Ultra
 
-> **Current release:** v0.12.0 ([CHANGELOG](CHANGELOG.md))
+> **Current release:** v0.14.0 ([CHANGELOG](CHANGELOG.md))
 > A defensive, audit-driven runtime + skill bundle for AI-assisted
 > coding workflows.  Ships with VIBECODE-MASTER v5 methodology,
 > RRI-T / RRI-UI / RRI-UX question banks, a permission engine,
-> a scaffold engine, a Python-pure browser daemon, and a **67-probe
+> a scaffold engine, a Python-pure browser daemon, and a **77-probe
 > self-audit gate**.
 
 > **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
@@ -12,7 +12,11 @@
 
 ## Skills inspired by gstack
 
-v0.12.0 introduces seven `/vck-*` slash commands and a Python browser
+v0.14.0 adds eight more `/vck-*` commands (plan reviews + polish), an
+optional `security_classifier` ensemble (`[ml]` extra), per-project
+learnings / team-mode coordination stores, GitHub Actions CI, and
+`CONTRIBUTING.md` — lifting the conformance audit to **77 / 77 @ 100 %**.
+v0.12.0 introduced seven `/vck-*` slash commands and a Python browser
 daemon adapted — with attribution — from
 [gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
 commit `675717e3`):

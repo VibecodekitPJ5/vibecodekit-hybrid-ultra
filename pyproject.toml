@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "vibecodekit-hybrid-ultra"
-version = "0.12.0"
+version = "0.14.0"
 description = "Defensive, audit-driven runtime + skill bundle for AI-assisted coding workflows. VIBECODE-MASTER methodology + RRI question banks + permission engine + scaffold engine + 67-probe audit + sub-second browser daemon."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -37,10 +37,13 @@ browser = [
     "uvicorn[standard]>=0.27.0",
     "httpx>=0.26.0",
 ]
-# `pip install "vibecodekit-hybrid-ultra[ml]"` reserved for v0.14 ML security
-# stack (ONNX prompt-injection classifier + ensemble verifier).
+# `pip install "vibecodekit-hybrid-ultra[ml]"` enables the ONNX
+# prompt-injection classifier layer + Haiku transcript verifier.
+# Core regex layer runs without this extra.
 ml = [
     "onnxruntime>=1.17.0",
+    "transformers>=4.40.0",
+    "httpx>=0.26.0",
 ]
 dev = [
     "pytest>=8.0",
@@ -51,9 +54,9 @@ all = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra"
-Issues = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra/issues"
-Changelog = "https://github.com/Freedomxyz369/vibecodekit-hybrid-ultra/blob/main/CHANGELOG.md"
+Homepage = "https://github.com/N-NewteamPJ369/vibecodekit-hybrid-ultra"
+Issues = "https://github.com/N-NewteamPJ369/vibecodekit-hybrid-ultra/issues"
+Changelog = "https://github.com/N-NewteamPJ369/vibecodekit-hybrid-ultra/blob/main/CHANGELOG.md"
 
 [project.scripts]
 vibecodekit = "vibecodekit.cli:main"
@@ -70,4 +73,5 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "browser: requires the [browser] optional extras (playwright, fastapi, uvicorn).",
+    "ml: requires the [ml] optional extras (onnxruntime, transformers, httpx).",
 ]

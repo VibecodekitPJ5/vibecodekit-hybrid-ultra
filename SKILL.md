@@ -1,6 +1,6 @@
 ---
 name: vibecodekit-hybrid-ultra
-version: 0.12.0
+version: 0.14.0
 description: >-
   Full Agentic-OS overlay for Claude Code / Devin / Cursor projects with
   the VIBECODE-MASTER methodology layer on top.  Keeps 100 % parity
@@ -59,6 +59,14 @@ triggers:
   - /vck-ship
   - /vck-investigate
   - /vck-canary
+  - /vck-office-hours
+  - /vck-ceo-review
+  - /vck-eng-review
+  - /vck-design-consultation
+  - /vck-design-review
+  - /vck-learn
+  - /vck-retro
+  - /vck-second-opinion
 paths:
   - "**/*.py"
   - "**/*.ts"

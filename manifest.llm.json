@@ -2,7 +2,7 @@
   "$schema": "https://vibecodekit.dev/schema/manifest-llm-0.11.json",
   "kind": "vibecodekit.manifest.llm",
   "name": "vibecodekit-hybrid-ultra",
-  "version": "0.12.0",
+  "version": "0.14.0",
   "description": ">-",
   "introspection": {
     "skill_md": "SKILL.md",
@@ -49,7 +49,15 @@
       "/vck-qa-only",
       "/vck-ship",
       "/vck-investigate",
-      "/vck-canary"
+      "/vck-canary",
+      "/vck-office-hours",
+      "/vck-ceo-review",
+      "/vck-eng-review",
+      "/vck-design-consultation",
+      "/vck-design-review",
+      "/vck-learn",
+      "/vck-retro",
+      "/vck-second-opinion"
     ],
     "paths": [
       "**/*.py",
@@ -201,6 +209,38 @@
     {
       "name": "vck-canary",
       "file": ".claude/commands/vck-canary.md"
+    },
+    {
+      "name": "vck-office-hours",
+      "file": ".claude/commands/vck-office-hours.md"
+    },
+    {
+      "name": "vck-ceo-review",
+      "file": ".claude/commands/vck-ceo-review.md"
+    },
+    {
+      "name": "vck-eng-review",
+      "file": ".claude/commands/vck-eng-review.md"
+    },
+    {
+      "name": "vck-design-consultation",
+      "file": ".claude/commands/vck-design-consultation.md"
+    },
+    {
+      "name": "vck-design-review",
+      "file": ".claude/commands/vck-design-review.md"
+    },
+    {
+      "name": "vck-learn",
+      "file": ".claude/commands/vck-learn.md"
+    },
+    {
+      "name": "vck-retro",
+      "file": ".claude/commands/vck-retro.md"
+    },
+    {
+      "name": "vck-second-opinion",
+      "file": ".claude/commands/vck-second-opinion.md"
     }
   ],
   "agents": [

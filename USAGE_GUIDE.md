@@ -1132,6 +1132,65 @@ python -m vibecodekit.cli task start my-plan.json
 
 ---
 
+## §17. Browser daemon (`[browser]` extra) — v0.12.0+
+
+Python-pure replacement cho gstack `browse` daemon.  Mặc định **off**;
+bật bằng cách cài extra `[browser]` và chạy server.
+
+### Cài đặt
+
+```bash
+pip install -e ".[browser]"      # thêm playwright + fastapi + uvicorn
+playwright install chromium      # ~120 MB, 1 lần
+```
+
+### Vòng đời
+
+1. `vibecodekit.browser.server` khởi động, bind 1 port random 10000–60000,
+   ghi state file `~/.vibecode/browser.json` atomic 0o600.
+2. Chrome CDP được Playwright quản lý persistent; cookie / localStorage
+   giữ giữa các lệnh.
+3. Sau 30 phút idle (config via `--idle-timeout`) daemon auto-shutdown.
+
+### Command class
+
+| Verb | Class | Ghi chú |
+|---|---|---|
+| `goto / back / forward / reload` | mutation | đi qua permission engine |
+| `click / fill / press / scroll` | mutation | bị URL blocklist cắt (`file:`, `chrome:`, `javascript:`, IMDS) |
+| `screenshot / snapshot / text / html` | read_only | bao bởi datamarking envelope |
+| `wait_for / network_log / console_log` | verify | |
+
+### Ví dụ
+
+```bash
+# snapshot + lưu JSON
+python -m vibecodekit.browser.cli_adapter snapshot https://example.com \
+    --out /tmp/example.json
+
+# /vck-qa (real-browser QA) dùng daemon sau hậu trường
+/vck-qa "checklist VN-12 trên trang đặt hàng"
+```
+
+### Security invariants
+
+- State file luôn 0o600 + atomic replace.
+- ARIA output wrap trong datamarking envelope (`<vck:aria>…</vck:aria>`);
+  hidden elements bị strip trước khi return về caller.
+- URL blocklist chặn `file:`, `chrome:`, `javascript:`, 169.254.169.254
+  (IMDS), plus mọi hostname trong `BROWSER_URL_DENYLIST`.
+- Mọi lệnh đi qua `permission_engine.classify_cmd` trước khi thực thi.
+
+### Quan hệ với `[ml]` extra (v0.14.0+)
+
+- `[browser]` = real-browser QA (Playwright + FastAPI).
+- `[ml]` = `onnxruntime` + `transformers` + `httpx` để bật
+  `security_classifier` ONNX + Haiku layer.  Regex layer luôn chạy trong
+  core stdlib.
+- Cả 2 extras hoạt động độc lập; cài cả 2 để có pipeline đầy đủ.
+
+---
+
 ## 16. v0.11.x BIG-UPDATE history — 6 tính năng mới
 
 Bản v0.11.0 BIG-UPDATE (historical) tích hợp 6 strengths của

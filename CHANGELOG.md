@@ -4,6 +4,118 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.14.0] — gstack integration Phase 3+4 (ML security + plan reviews + polish)
+
+Second gstack-integration release.  Merges Phase 3 (ML security +
+plan-review skills) and Phase 4 (polish + community infrastructure)
+into a single shipping vehicle.  All 67 v0.12.0 probes remain bit-for-bit
+identical; this release adds **10 new probes (#68–#77)** for a total of
+**77 / 77 @ 100 %**.
+
+### Added
+
+* **`scripts/vibecodekit/security_classifier.py`** — 3-layer ensemble
+  prompt-injection / secret-leak detector.  `RegexLayer` ships in the
+  stdlib-only core (24-rule bank covering prompt injection, secret
+  leaks across 8 key formats, exfiltration prose, and IMDS access).
+  `OnnxLayer` and `HaikuLayer` are optional (`[ml]` extra — adds
+  `onnxruntime`, `transformers`, `httpx`).  Both optional layers
+  self-disable cleanly when deps or credentials are missing.  Ensemble
+  vote is **2-of-3 majority of non-abstainers**; every verdict is
+  rendered as a synthetic permission-engine command so
+  `permission_engine.classify_cmd` is always on the decision path.
+* **`scripts/vibecodekit/eval_select.py`** — diff-based test selection
+  with touchfile map.  Supports both list and `{files, always_run}`
+  shapes, glob + prefix matching, unmapped-change reporting, and a
+  `fallback_all_tests` escape hatch when no changes are detected.
+* **`scripts/vibecodekit/learnings.py`** — per-project JSONL learnings
+  store with 3-tier scope (user / project / team), atomic
+  fcntl-locked appends, corrupt-line tolerance, and a cross-scope
+  `load_all` merge helper.
+* **`scripts/vibecodekit/team_mode.py`** — `.vibecode/team.json`
+  coordination file (required gates / optional gates /
+  learnings_required), atomic write, and
+  `assert_required_gates_run()` enforcement.
+* **8 new `/vck-*` specialist slash commands**:
+  - `/vck-office-hours` — YC-style 6 forcing questions
+    (PMF / hurt / why-now / moat / distribution / ask).
+  - `/vck-ceo-review` — 4-mode review (SCOPE EXPANSION /
+    SELECTIVE / HOLD / REDUCTION).
+  - `/vck-eng-review` — lock architecture with 7-item gate
+    (ASCII diagram, state machine, invariants, contracts,
+    error taxonomy, observability, backwards-compat).
+  - `/vck-design-consultation` — build design system from zero
+    (tokens → components → patterns → flows, VN-first).
+  - `/vck-design-review` — UI drift audit + atomic fix loop.
+  - `/vck-learn` — capture one learning to JSONL (scope aware).
+  - `/vck-retro` — weekly retro (Keep / Stop / Try) + 3 action
+    commits.
+  - `/vck-second-opinion` — delegate plan/code review to a
+    different CLI (Codex / Gemini / Ollama) via the permission
+    engine.
+* **Optional ML security hook wiring** — `pre_tool_use.py` calls
+  `security_classifier.classify_text` when `VIBECODE_SECURITY_CLASSIFIER=1`.
+  Off by default; upgrades an existing `allow` decision to `deny` when
+  the ensemble detects prompt injection / secret leak / exfiltration.
+  The hook never crashes the permission path: classifier errors are
+  reported as metadata, decision falls back to the permission engine.
+* **10 new conformance probes (#68–#77)**:
+  - #68 classifier ensemble contract — synthetic command goes through
+    `classify_cmd`.
+  - #69 regex rule bank — ≥ 3 kinds + unique ids.
+  - #70 blocks prompt injection (3 classic samples).
+  - #71 blocks secret leak (AWS / GitHub / PEM).
+  - #72 optional layers abstain without deps / credentials.
+  - #73 eval_select — exact + glob + always_run + unmapped report.
+  - #74 learnings JSONL round-trip across user / team / project.
+  - #75 team_mode required-gate enforcement raises + clears.
+  - #76 GitHub Actions CI workflow present + gates pytest + audit.
+  - #77 `CONTRIBUTING.md` + `USAGE_GUIDE.md §17 browser` present.
+* **`.github/workflows/ci.yml`** — pytest + conformance audit +
+  release-matrix gate across Python 3.9 / 3.11 / 3.12.
+* **`CONTRIBUTING.md`** — VN-first contributing guide with the
+  mandatory quality gates spelled out.
+* **`USAGE_GUIDE.md §17 browser`** — end-user docs for the v0.12
+  browser daemon and its relationship to the new `[ml]` extra.
+* **Tests** (+~500 LOC, ≥ 60 new cases): `tests/test_security_classifier.py`
+  (regex coverage, optional-layer self-disable, ensemble majority,
+  permission-engine integration), `tests/test_eval_select.py`
+  (both touchfile shapes, glob, always_run, unmapped, bad shape
+  rejection), `tests/test_learnings_and_team.py` (round-trip,
+  corrupt-line tolerance, concurrent append via threads, team
+  config round-trip + enforcement), and `tests/test_vck_skills_v014.py`
+  (manifest / SKILL.md / intent_router / subagent_runtime wiring).
+
+### Changed
+
+* `pyproject.toml` — version → 0.14.0; `[ml]` extra now pins
+  `onnxruntime`, `transformers`, `httpx`.  `markers` adds an `ml`
+  pytest marker.
+* `manifest.llm.json`, `SKILL.md`, `scripts/vibecodekit/intent_router.py`,
+  `scripts/vibecodekit/subagent_runtime.py` — wire the 8 new
+  slash commands, 8 new intents, and 8 new command → agent bindings
+  without touching any of the 26 existing `/vibe-*` or 7 existing
+  `/vck-*` commands.
+* `VERSION`, `update-package/VERSION`, `assets/plugin-manifest.json`,
+  `update-package/.claw.json` — bumped to 0.14.0.
+
+### Metrics
+
+* **Tests**: 459 → 519 passed, 15 skipped.
+* **Conformance audit**: 67/67 → **77/77 @ 100 %**.
+* **Release matrix**: L1 (source) + L2 (zip) + L3 (installed project)
+  all PASS.
+* **Core deps**: still stdlib-only.  `[ml]` is opt-in; default
+  installations are unchanged.
+
+### Attribution
+
+Phase 3 + 4 architecture inspired by
+[gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
+commit `675717e3`).  Clean-room Python re-implementation; no gstack
+source is copied.  See `LICENSE-third-party.md` for the full
+attribution manifest and SHA pinning.
+
 ## [0.12.0] — gstack integration Phase 1+2 (browser daemon + 6 specialist skills)
 
 First minor release after v0.11.4.1.  Introduces the first round of

@@ -208,6 +208,51 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "ship orchestrator", "atomic ship",
         "test review push pr",
     )),
+    # v0.14.0 — plan-review + polish skills (gstack Phase 3 + 4 adaptation).
+    ("VCK_OFFICE_HOURS", (
+        "/vck-office-hours", "vck-office-hours",
+        "office hours yc", "yc office hours",
+        "6 forcing questions", "forcing question",
+        "pmf interrogation",
+    )),
+    ("VCK_CEO_REVIEW", (
+        "/vck-ceo-review", "vck-ceo-review",
+        "ceo review", "ceo mode review",
+        "scope expansion", "scope reduction",
+        "ceo lens",
+    )),
+    ("VCK_ENG_REVIEW", (
+        "/vck-eng-review", "vck-eng-review",
+        "engineering review", "eng review",
+        "lock architecture", "invariants review",
+    )),
+    ("VCK_DESIGN_CONSULTATION", (
+        "/vck-design-consultation", "vck-design-consultation",
+        "design system from scratch",
+        "design consultation",
+        "design tokens spacing",
+    )),
+    ("VCK_DESIGN_REVIEW", (
+        "/vck-design-review", "vck-design-review",
+        "design review audit", "design drift",
+        "ui drift audit",
+    )),
+    ("VCK_LEARN", (
+        "/vck-learn", "vck-learn",
+        "capture learning", "ghi bài học",
+        "ghi bai hoc", "save learning",
+    )),
+    ("VCK_RETRO", (
+        "/vck-retro", "vck-retro",
+        "weekly retro", "sprint retro",
+        "retro tuần", "retro tuan",
+    )),
+    ("VCK_SECOND_OPINION", (
+        "/vck-second-opinion", "vck-second-opinion",
+        "second opinion", "phản biện plan",
+        "phan bien plan", "codex review",
+        "gemini review", "second brain review",
+    )),
 )
 
 # Synthetic pipelines: when one intent is mentioned in a high-level way
@@ -261,10 +306,18 @@ _INTENT_TO_SLASH: dict[str, str] = {
     "DASHBOARD": "/vibe-dashboard",
     "AUDIT":     "/vibe-audit",
     "INSTALL":   "/vibe-install",
-    # v0.12.0 — VCK-* gstack-inspired specialist commands.
+    # v0.12.0 / v0.14.0 — VCK-* gstack-inspired specialist commands.
     "VCK_CSO":         "/vck-cso",
     "VCK_REVIEW":      "/vck-review",
     "VCK_QA":          "/vck-qa",
+    "VCK_OFFICE_HOURS":       "/vck-office-hours",
+    "VCK_CEO_REVIEW":         "/vck-ceo-review",
+    "VCK_ENG_REVIEW":         "/vck-eng-review",
+    "VCK_DESIGN_CONSULTATION":"/vck-design-consultation",
+    "VCK_DESIGN_REVIEW":      "/vck-design-review",
+    "VCK_LEARN":              "/vck-learn",
+    "VCK_RETRO":              "/vck-retro",
+    "VCK_SECOND_OPINION":     "/vck-second-opinion",
     "VCK_INVESTIGATE": "/vck-investigate",
     "VCK_CANARY":      "/vck-canary",
     "VCK_SHIP":        "/vck-ship",
