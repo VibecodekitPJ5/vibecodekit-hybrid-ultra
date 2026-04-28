@@ -1,6 +1,6 @@
 # VibecodeKit Hybrid Ultra
 
-> **Current release:** v0.14.0 ([CHANGELOG](CHANGELOG.md))
+> **Current release:** v0.14.1 ([CHANGELOG](CHANGELOG.md))
 > A defensive, audit-driven runtime + skill bundle for AI-assisted
 > coding workflows.  Ships with VIBECODE-MASTER v5 methodology,
 > RRI-T / RRI-UI / RRI-UX question banks, a permission engine,

@@ -1,6 +1,6 @@
 {
   "overlay": "vibecodekit-hybrid-ultra",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "default_permission_mode": "default",
   "hooks_dir": ".claw/hooks",
   "commands_dir": ".claude/commands",

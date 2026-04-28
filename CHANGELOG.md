@@ -4,6 +4,68 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.14.1] — RRI-T deep audit fixes (P0 + P1 from v0.14.0 audit cycle)
+
+Cycle hardening pass after the v0.14.0 merge.  The deep RRI-T audit
+(5 personas × 7 dimensions × 8 stress axes per
+``RRI-T_METHODOLOGY.docx``) surfaced **1 P0 + 4 P1** defects in the new
+modules.  All five are fixed here with regression tests pinned in
+``tests/test_v014_audit_fixes.py`` (19 cases).
+
+### Fixed
+
+* **P0 — `team_mode.write_team_config` race condition (COLLAB axis).**
+  The previous implementation rendered to a shared ``team.json.tmp``,
+  causing concurrent writers (e.g. two Devin sessions running
+  ``vibe team-init`` in parallel) to crash on ``os.replace`` with
+  ``FileNotFoundError``.  Now uses ``tempfile.mkstemp`` with a unique
+  per-writer suffix in the same directory; ``os.replace`` remains
+  atomic and last-writer-wins.
+* **P1 — `security_classifier` newline-split bypass (D4 + D7).**
+  Five injection rules used ``[^.\n]`` to bound their span; attackers
+  could split prose across newlines (``Ignore\nall\nprevious\n
+  instructions``) and silently bypass.  Span class is now ``[^.]`` so
+  newlines are tolerated while sentence boundaries still bound the
+  match.  Bumped span limits from 60 → 80 chars (40 → 60 for
+  ``pi-system-prompt-leak``) to recover precision lost on the new
+  newline allowance.
+* **P1 — `security_classifier` LOCALE coverage (axis 8 — Vietnamese).**
+  The project is VN-first but the rule bank shipped English-only
+  patterns.  Added 4 Vietnamese-language rules (``pi-vn-ignore-prior``,
+  ``pi-vn-you-are-now``, ``pi-vn-system-prompt-leak``,
+  ``pi-vn-roleplay-override``) with high-precision wording mirroring
+  their English counterparts.  Total rule count: 24 → 28.
+* **P1 — `team_mode.TeamConfig.from_dict` silent-coercion bug.**
+  ``{"required": "oops"}`` was silently iterated as
+  ``("o","o","p","s")`` because ``tuple(value)`` accepts any iterable.
+  Now rejects non-list/tuple values explicitly with ``ValueError``.
+  ``read_team_config`` swallows the new error and returns ``None`` so
+  callers fall through to "no team mode" rather than crashing.
+* **P1 — `eval_select` empty-patterns silently skipped.** The module
+  docstring promised "missing or empty touchfile entries fall back to
+  'always run' so a stale map can never cause a test to be silently
+  skipped" — but ``{"tests/x.py": []}`` produced exactly that silent
+  skip.  Empty patterns lists (``[]`` and ``{"files": []}`` without
+  ``always_run``) now promote to always-run, matching the documented
+  contract.
+
+### Added
+
+* **`tests/test_v014_audit_fixes.py`** — 19 regression cases pinning
+  every fix above so future refactors cannot re-introduce the issues.
+
+### Changed (none)
+
+No public-API breaks.  All 77 conformance probes remain green, full
+suite is **536 passed / 15 skipped** (was 517 / 15 + 19 new regression
+cases).
+
+### Audit report
+
+See ``docs/AUDIT-v0.14.0.md`` for the full RRI-T cycle write-up
+including persona coverage, stress-axis matrix, and severity
+classification rationale.
+
 ## [0.14.0] — gstack integration Phase 3+4 (ML security + plan reviews + polish)
 
 Second gstack-integration release.  Merges Phase 3 (ML security +

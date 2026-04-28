@@ -74,9 +74,13 @@ class RegexRule:
 # (``deny`` on any match with severity != "low", ``abstain`` otherwise).
 REGEX_PATTERNS: Tuple[RegexRule, ...] = (
     # --- Prompt injection: direct impersonation ------------------------
+    # Note: span class is ``[^.]`` (DOTALL via ``(?s)``) — newlines must
+    # be matched because attackers commonly split injections across
+    # lines (``Ignore\nall\nprevious\ninstructions``).  The period is
+    # still excluded so we don't run across sentence boundaries.
     RegexRule("pi-ignore-prior",
               "prompt_injection",
-              r"(?is)\b(ignore|disregard|forget)\b[^.\n]{0,60}\b(previous|prior|all)\b[^.\n]{0,60}\b(instructions?|prompts?|messages?|rules?)\b",
+              r"(?is)\b(ignore|disregard|forget)\b[^.]{0,80}\b(previous|prior|all)\b[^.]{0,80}\b(instructions?|prompts?|messages?|rules?)\b",
               "high"),
     RegexRule("pi-you-are-now",
               "prompt_injection",
@@ -84,16 +88,40 @@ REGEX_PATTERNS: Tuple[RegexRule, ...] = (
               "high"),
     RegexRule("pi-system-prompt-leak",
               "prompt_injection",
-              r"(?is)\b(print|reveal|show|output|dump|disclose)\b[^.\n]{0,40}\b(system|developer|hidden|initial)\s+prompt\b",
+              r"(?is)\b(print|reveal|show|output|dump|disclose)\b[^.]{0,60}\b(system|developer|hidden|initial)\s+prompt\b",
               "high"),
     RegexRule("pi-roleplay-override",
               "prompt_injection",
-              r"(?is)\b(pretend|roleplay|act\s+as|simulate)\b[^.\n]{0,60}\b(admin|root|owner|no\s+restrictions?|no\s+filters?)\b",
+              r"(?is)\b(pretend|roleplay|act\s+as|simulate)\b[^.]{0,80}\b(admin|root|owner|no\s+restrictions?|no\s+filters?)\b",
               "medium"),
     RegexRule("pi-prompt-terminator",
               "prompt_injection",
               r"(?s)(\{\{\s*system\s*\}\}|<\|im_start\|>|<\|system\|>|###\s*system\s*:?)",
               "high"),
+    # --- Vietnamese-language prompt injection (LOCALE axis) -----------
+    # The project is VN-first; English-only patterns silently miss
+    # local-language attack prose.  These mirror the English rules:
+    #   "bỏ qua / phớt lờ / quên ... (tất cả|trước đó) ... (hướng dẫn|
+    #   prompt|chỉ thị|quy tắc)"
+    RegexRule("pi-vn-ignore-prior",
+              "prompt_injection",
+              r"(?is)\b(bỏ\s*qua|phớt\s*lờ|quên(\s+đi)?)\b[^.]{0,80}\b(tất\s*cả|trước\s*đó|trước|mọi)\b[^.]{0,80}\b(hướng\s*dẫn|chỉ\s*thị|prompt|quy\s*tắc|tin\s*nhắn)\b",
+              "high"),
+    # "bạn (bây giờ) là (admin/root/...)"
+    RegexRule("pi-vn-you-are-now",
+              "prompt_injection",
+              r"(?is)\bbạn\s+(bây\s*giờ\s+)?là\b[^.]{0,40}\b(admin|root|chủ|không\s+giới\s+hạn|không\s+bị\s+chặn|jailbroken)\b",
+              "high"),
+    # "tiết lộ / in / hiển thị (system|developer|nội bộ) prompt"
+    RegexRule("pi-vn-system-prompt-leak",
+              "prompt_injection",
+              r"(?is)\b(tiết\s*lộ|in|hiển\s*thị|đọc|xuất|phơi\s*bày)\b[^.]{0,40}\b(system|developer|nội\s*bộ|gốc|ban\s*đầu)\s+prompt\b",
+              "high"),
+    # "đóng giả / giả vờ là (admin/root/không giới hạn)"
+    RegexRule("pi-vn-roleplay-override",
+              "prompt_injection",
+              r"(?is)\b(đóng\s*giả|giả\s*vờ|đóng\s*vai)\b[^.]{0,80}\b(admin|root|chủ|không\s+giới\s+hạn|không\s+bị\s+chặn)\b",
+              "medium"),
     # --- Exfiltration attempts ----------------------------------------
     RegexRule("exf-curl-exfil",
               "exfil",

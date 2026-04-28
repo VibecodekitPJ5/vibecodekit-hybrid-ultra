@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import tempfile
 import time
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -61,10 +62,21 @@ class TeamConfig:
 
     @classmethod
     def from_dict(cls, raw: dict) -> "TeamConfig":
+        def _seq(value: object) -> tuple:
+            # A bare string would be silently iterated as ("o", "o", "p", "s")
+            # by ``tuple(value)``, which is a footgun for hand-edited JSON.
+            # Reject strings explicitly; require a real list/tuple.
+            if value is None:
+                return ()
+            if isinstance(value, (list, tuple)):
+                return tuple(str(v) for v in value)
+            raise ValueError(
+                f"team config field expected list, got {type(value).__name__}: {value!r}"
+            )
         return cls(
             team_id=str(raw.get("team_id", "")),
-            required=tuple(raw.get("required") or ()),
-            optional=tuple(raw.get("optional") or ()),
+            required=_seq(raw.get("required")),
+            optional=_seq(raw.get("optional")),
             learnings_required=bool(raw.get("learnings_required")),
             created_ts=float(raw.get("created_ts") or 0.0),
             updated_ts=float(raw.get("updated_ts") or 0.0),
@@ -85,7 +97,11 @@ def read_team_config(root: Optional[Path] = None) -> Optional[TeamConfig]:
         return None
     try:
         return TeamConfig.from_dict(json.loads(p.read_text(encoding="utf-8")))
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError, TypeError):
+        # Malformed file (corrupt JSON or wrong field types) — treat as
+        # "no team config" rather than crash the consumer.  Callers that
+        # need to surface the error can call ``TeamConfig.from_dict``
+        # directly.
         return None
 
 
@@ -104,14 +120,29 @@ def write_team_config(cfg: TeamConfig, root: Optional[Path] = None) -> TeamConfi
         learnings_required=cfg.learnings_required,
         created_ts=created, updated_ts=now,
     )
-    tmp = p.with_suffix(p.suffix + ".tmp")
-    tmp.write_text(json.dumps(new.as_dict(), ensure_ascii=False, indent=2),
-                   encoding="utf-8")
+    # Use a per-writer unique tmp path so concurrent writers (e.g. two
+    # Devin sessions running ``vibe team-init`` in parallel) do not race
+    # on a shared ``team.json.tmp`` and crash with FileNotFoundError on
+    # ``os.replace``.  ``mkstemp`` opens an FD we then close; the temp
+    # file lives in the same directory so ``os.replace`` is atomic.
+    fd, tmp_str = tempfile.mkstemp(
+        prefix=p.name + ".", suffix=".tmp", dir=str(p.parent),
+    )
     try:
-        os.chmod(tmp, 0o644)
-    except OSError:
-        pass
-    os.replace(tmp, p)
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(json.dumps(new.as_dict(), ensure_ascii=False, indent=2))
+        try:
+            os.chmod(tmp_str, 0o644)
+        except OSError:
+            pass
+        os.replace(tmp_str, p)
+    except Exception:
+        # Best-effort cleanup if we crashed before the rename.
+        try:
+            os.unlink(tmp_str)
+        except OSError:
+            pass
+        raise
     return new
 
 

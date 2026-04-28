@@ -119,13 +119,27 @@ def _match(pattern: str, path: str) -> bool:
 
 
 def _normalise_entry(value) -> list:
-    """Accept the two load_map shapes inline so callers can pass raw JSON."""
+    """Accept the two load_map shapes inline so callers can pass raw JSON.
+
+    An empty patterns list (``[]`` or ``{"files": []}`` without
+    ``always_run``) is conservatively promoted to always-run — see the
+    module docstring's contract: "missing or empty touchfile entries
+    fall back to 'always run' so a stale map can never cause a test to
+    be silently skipped."
+    """
     if isinstance(value, list):
-        return list(value)
+        out = list(value)
+        if not out:
+            out = ["__ALWAYS__"]
+        return out
     if isinstance(value, dict):
         out = list(value.get("files", []))
-        if value.get("always_run"):
-            out.append("__ALWAYS__")
+        if value.get("always_run") or not out:
+            # Empty ``files`` without an explicit ``always_run: false``
+            # is treated as always-run.  Operators who want a test to
+            # never run on diff-changes can simply drop the entry.
+            if "__ALWAYS__" not in out:
+                out.append("__ALWAYS__")
         return out
     raise ValueError(f"bad touchfile entry: {value!r}")
 
