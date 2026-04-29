@@ -20,4 +20,15 @@ Không có fix loop, không apply diff. Output cùng format như `/vck-qa` nhưn
 
 Xem `/vck-qa` cho checklist đầy đủ và mô tả checklist VN-12.
 
+## Hậu xử lý (v0.15+)
+
+Sau khi qa pass GREEN (exit 0), ghi vào session ledger để `/vck-ship`
+Bước 0 nhận diện:
+
+```bash
+python -m vibecodekit.team_mode record --gate /vck-qa-only
+```
+
+Trên repo không có team mode thì câu lệnh vẫn an toàn (no-op semantic).
+
 > Skill này được port + Việt-hoá từ [gstack/qa](https://github.com/garrytan/gstack/tree/main/qa) (© Garry Tan, MIT). Xem `LICENSE-third-party.md`.

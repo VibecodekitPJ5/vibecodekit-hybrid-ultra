@@ -25,6 +25,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # eval_select needs the merge-base — fetch full history.
+          fetch-depth: 0
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
@@ -35,6 +38,24 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install pytest
+
+      - name: eval_select preview (diff-based test selection)
+        # Visibility-only on every event: prints the selection so reviewers
+        # can see which tests would have been chosen.  We always run the
+        # FULL suite below for safety, but expose the diff-based preview
+        # so the eval_select pipeline is exercised and any breakage is
+        # caught immediately on CI rather than at /vck-ship time.
+        env:
+          PYTHONPATH: ./scripts
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main^' }}
+        run: |
+          git fetch origin --no-tags --depth=200 "${BASE#origin/}" || true
+          python -m vibecodekit.eval_select \
+            --base "$BASE" \
+            --map tests/touchfiles.json \
+            --json | tee eval_select.preview.json
+          # Emit a one-line summary for the workflow log.
+          python -c "import json; d=json.load(open('eval_select.preview.json')); print(f\"selected={len(d.get('selected') or [])} unmapped={len(d.get('unmapped_changes') or [])}\")"
 
       - name: pytest (full suite)
         env:

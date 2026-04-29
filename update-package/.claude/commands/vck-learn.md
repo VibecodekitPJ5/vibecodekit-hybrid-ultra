@@ -36,11 +36,14 @@ sau (xem `scripts/vibecodekit/learnings.py`).
 
 Ngắn, cụ thể, kèm ngày / tác giả / 1 link (commit SHA / issue).
 
-## Integration
+## Integration (v0.15+)
 
 - `/vck-retro` đọc store để tổng hợp tuần.
-- `session_start` hook tự inject 10 learning mới nhất (scope = union)
-  vào system prompt (đang ở prototype; off by default).
+- `session_start` hook **mặc định ON** auto-inject 10 learning mới nhất
+  (scope project ∪ user) vào system prompt addendum.  Tắt bằng
+  `VIBECODE_LEARNINGS_INJECT=0` (xem `update-package/.claw/hooks/session_start.py`).
+- Sau khi capture, ghi vào ledger để team-mode (nếu bật) thấy gate đã chạy:
+  `python -m vibecodekit.team_mode record --gate /vck-learn`
 
 ## Attribution
 

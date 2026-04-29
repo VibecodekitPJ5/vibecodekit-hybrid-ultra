@@ -17,7 +17,18 @@ Lệnh ship-cuối: chạy tuần tự **test → /vck-review → commit → pus
 
 > Khác `/vibe-ship` (deploy 7-target): `/vck-ship` chỉ là **code-ship** (đưa code đi review/PR). Sau khi PR merge, gọi `/vibe-ship` để deploy.
 
-## Pipeline 6 bước
+## Pipeline 7 bước
+
+### Bước 0 — Team-mode preflight (v0.15+)
+```bash
+python -m vibecodekit.team_mode check
+```
+- No-op nếu repo không có `.vibecode/team.json` (exit 0).
+- Nếu có team config: đọc `.vibecode/session_ledger.jsonl` và assert
+  rằng tất cả gate trong `required` đã chạy ở session hiện tại.
+- **Gate:** exit 0 = pass. Exit 2 = `TeamGateViolation` →
+  STOP, in danh sách gate còn thiếu, hướng dẫn user chạy `/vck-review`
+  + `/vck-qa-only` rồi rerun `/vck-ship`.
 
 ### Bước 1 — Preflight
 - `git status` clean (không có untracked không trong .gitignore)
@@ -26,21 +37,35 @@ Lệnh ship-cuối: chạy tuần tự **test → /vck-review → commit → pus
 - `python -m vibecodekit.cli doctor` pass
 
 ### Bước 2 — Test gate
+**v0.15+ — diff-based selective khi có `tests/touchfiles.json`:**
+
 ```bash
-python -m vibecodekit.cli test
-# hoặc test toàn bộ:
-PYTHONPATH=./scripts python3 -m pytest tests -q
+BASE=${VCK_SHIP_BASE:-origin/main}
+if [ -f tests/touchfiles.json ]; then
+  python -m vibecodekit.eval_select --base "$BASE" --map tests/touchfiles.json --json > /tmp/vck-selected.json
+  SELECTED=$(python -c "import json; d=json.load(open('/tmp/vck-selected.json')); print(' '.join(d.get('selected') or []))")
+  if [ -n "$SELECTED" ]; then
+    PYTHONPATH=./scripts python3 -m pytest -q $SELECTED
+  else
+    PYTHONPATH=./scripts python3 -m pytest tests -q   # diff empty → fallback full
+  fi
+else
+  PYTHONPATH=./scripts python3 -m pytest tests -q     # no map → full suite
+fi
 ```
+
 **Gate:** `0 failed, 0 errored`. Nếu fail → STOP, không commit.
 
 ### Bước 3 — `/vck-review` gate
 - Spawn `/vck-review` trên `git diff <base>`
 - **Gate:** recommendation = GREEN. YELLOW → ask user confirm. RED → STOP.
+- Sau khi review pass: `python -m vibecodekit.team_mode record --gate /vck-review`
 
 ### Bước 4 — `/vck-qa-only` gate (nếu có UI)
 - Detect: có file `*.tsx`, `*.jsx`, `*.vue`, `*.svelte` trong diff?
 - Nếu có: chạy `/vck-qa-only $STAGING_URL` (yêu cầu env `VCK_STAGING_URL`)
 - **Gate:** exit code 0 (GREEN)
+- Sau khi qa pass: `python -m vibecodekit.team_mode record --gate /vck-qa-only`
 
 ### Bước 5 — Commit + push
 - Conventional commit: `feat(<scope>): <subject>`
@@ -52,6 +77,12 @@ PYTHONPATH=./scripts python3 -m pytest tests -q
 - Fetch template `git_pr fetch_template` (nếu repo có)
 - Body theo template + summary của review findings + test result
 - Tạo PR, lấy URL trả về user
+
+### Bước 7 — Clear ledger (v0.15+)
+```bash
+python -m vibecodekit.team_mode clear
+```
+- Wipe `.vibecode/session_ledger.jsonl` để cycle ship kế tiếp bắt đầu sạch.
 
 ## Lệnh
 

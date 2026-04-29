@@ -1493,6 +1493,69 @@ def _probe_contributing_and_usage_guide(tmp: Path) -> Tuple[bool, str]:
     return False, "no CONTRIBUTING.md found in any candidate root"
 
 
+def _probe_vck_ship_team_mode_wired(tmp: Path) -> Tuple[bool, str]:
+    """#78 — /vck-ship Bước 0 calls team_mode check + clears the ledger.
+
+    Pins the v0.15.0-alpha invariant: the team_mode module is no longer
+    dormant — the ship orchestrator MUST gate on it.
+    """
+    for base in _candidate_repo_roots(tmp):
+        p = base / "update-package" / ".claude" / "commands" / "vck-ship.md"
+        if not p.is_file():
+            continue
+        body = p.read_text(encoding="utf-8")
+        if "Bước 0" not in body:
+            return False, f"{p.relative_to(base)}: missing Bước 0"
+        if "vibecodekit.team_mode check" not in body:
+            return False, f"{p.relative_to(base)}: Bước 0 must call team_mode check"
+        if "team_mode clear" not in body:
+            return False, f"{p.relative_to(base)}: missing post-PR ledger clear"
+        # Bước 0 must precede Bước 1.
+        if body.index("Bước 0") >= body.index("Bước 1"):
+            return False, f"{p.relative_to(base)}: Bước 0 must come before Bước 1"
+        return True, "vck-ship Bước 0 wires team_mode (check + clear)"
+    return False, "no update-package/.claude/commands/vck-ship.md found"
+
+
+def _probe_eval_select_wired_into_ci_and_ship(tmp: Path) -> Tuple[bool, str]:
+    """#79 — eval_select is invoked from /vck-ship Bước 2 + GitHub Actions CI."""
+    for base in _candidate_repo_roots(tmp):
+        ship = base / "update-package" / ".claude" / "commands" / "vck-ship.md"
+        ci = base / ".github" / "workflows" / "ci.yml"
+        touch = base / "tests" / "touchfiles.json"
+        if not ship.is_file():
+            continue
+        sbody = ship.read_text(encoding="utf-8")
+        if "vibecodekit.eval_select" not in sbody:
+            return False, f"{ship.relative_to(base)}: missing eval_select wiring"
+        if not ci.is_file():
+            return False, "ci.yml missing"
+        cbody = ci.read_text(encoding="utf-8")
+        if "eval_select" not in cbody:
+            return False, "ci.yml does not exercise eval_select"
+        if "fetch-depth: 0" not in cbody:
+            return False, "ci.yml missing fetch-depth: 0 (eval_select needs merge-base)"
+        if not touch.is_file():
+            return False, "tests/touchfiles.json missing"
+        return True, "eval_select wired into vck-ship + ci.yml + touchfiles.json"
+    return False, "no vck-ship.md found in any candidate root"
+
+
+def _probe_session_ledger_module(tmp: Path) -> Tuple[bool, str]:
+    """#80 — session_ledger record/read/clear behaves correctly."""
+    from . import session_ledger
+    if session_ledger.gates_run(root=tmp) != []:
+        return False, "fresh dir must report empty gates_run"
+    session_ledger.record_gate("/vck-review", root=tmp)
+    session_ledger.record_gate("/vck-qa-only", root=tmp)
+    if session_ledger.gates_run(root=tmp) != ["/vck-review", "/vck-qa-only"]:
+        return False, f"gates_run mismatch: {session_ledger.gates_run(root=tmp)}"
+    session_ledger.clear(root=tmp)
+    if session_ledger.gates_run(root=tmp) != []:
+        return False, "clear() did not wipe ledger"
+    return True, "session_ledger record + read + clear ok"
+
+
 PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("01_async_generator_loop",         _probe_async_generator),
     ("02_derived_needs_follow_up",      _probe_derived_follow_up),
@@ -1581,6 +1644,10 @@ PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("75_team_mode_required_gates",     _probe_team_mode_required_gates),
     ("76_github_actions_ci",            _probe_github_actions_ci),
     ("77_contributing_and_usage_guide", _probe_contributing_and_usage_guide),
+    # v0.15.0-alpha — pipeline-wiring probes (T1 + T2)
+    ("78_vck_ship_team_mode_wired",     _probe_vck_ship_team_mode_wired),
+    ("79_eval_select_wired",            _probe_eval_select_wired_into_ci_and_ship),
+    ("80_session_ledger_module",        _probe_session_ledger_module),
 ]
 
 

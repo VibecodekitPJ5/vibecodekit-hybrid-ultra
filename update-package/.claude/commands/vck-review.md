@@ -88,4 +88,16 @@ Pipeline đề xuất:
 ## Medium / Low (collapsed unless --verbose)
 ```
 
+## Hậu xử lý (v0.15+)
+
+Sau khi review hoàn tất với recommendation GREEN/YELLOW (RED → STOP),
+ghi vào session ledger để `/vck-ship` Bước 0 nhận diện gate đã chạy:
+
+```bash
+python -m vibecodekit.team_mode record --gate /vck-review
+```
+
+Trên repo không có `.vibecode/team.json` thì câu lệnh này vẫn an toàn
+(chỉ append 1 dòng vào `.vibecode/session_ledger.jsonl`, không gây side effect).
+
 > Skill này được port + Việt-hoá từ [gstack/review](https://github.com/garrytan/gstack/tree/main/review) (© Garry Tan, MIT). Xem `LICENSE-third-party.md`.

@@ -4,6 +4,72 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [Unreleased] — v0.15.0-alpha (PR-A — pipeline wiring T1 + T2 + T8)
+
+First slice of the **"One Pipeline, Zero Dead-Code"** rollout
+(`docs/INTEGRATION-PLAN-v0.15.md`).  No version bump yet; the canonical
+`VERSION` file stays at `0.14.1` until PR-D closes the cycle (T10).
+
+### Added
+
+* **`scripts/vibecodekit/session_ledger.py`** — append-only JSONL ledger
+  of completed gates, written to `.vibecode/session_ledger.jsonl`.
+  Concurrent appenders are POSIX-atomic; reads tolerate truncated /
+  corrupt rows.  3 public functions (`record_gate`, `gates_run`,
+  `clear`) + a stable `LEDGER_PATH` constant.
+* **`team_mode` CLI subcommands** — `check` (asserts required gates ran,
+  exit 2 on `TeamGateViolation`), `record --gate <name>` (appends to
+  ledger), `clear` (wipe).  `--gates-run` flag overrides the ledger for
+  one-shot CI checks.
+* **`tests/touchfiles.json`** — diff-based test selection map for VCK-HU
+  itself (16 entries; `test_docs_count_sync` + `test_content_depth`
+  marked `always_run: true`).
+* **Audit probes #78 / #79 / #80** — pin the new wiring as conformance
+  invariants.  Probe #78 verifies `/vck-ship` Bước 0 calls `team_mode
+  check` + Bước 7 clears.  #79 verifies `eval_select` is invoked from
+  both `/vck-ship` Bước 2 and `.github/workflows/ci.yml` (with
+  `fetch-depth: 0`).  #80 round-trips `session_ledger`.
+* **18 new regression tests** (`tests/test_session_ledger.py` — 7;
+  `tests/test_pipeline_v015_alpha.py` — 11).
+* **USAGE_GUIDE §18** — corrected Activation Cheat Sheet (the version
+  added in commit `28c69c9` was lost in PR #3 race; this rewrite
+  reflects v0.15.0-alpha truth, not v0.14.1 aspiration).
+* **README "Activation cheat sheet" table** — links to USAGE_GUIDE §18.
+
+### Changed
+
+* **`/vck-ship` 6-step pipeline → 7-step** (Bước 0 + Bước 7 added).
+  Bước 0 is a team-mode preflight (no-op when `.vibecode/team.json` is
+  absent); Bước 7 wipes the session ledger after the PR is open.
+  Bước 2 now invokes `eval_select` when `tests/touchfiles.json` is
+  present, falling back to the full `pytest tests` suite otherwise.
+* **`/vck-review`, `/vck-qa-only`, `/vck-learn`** now record their own
+  completion via `python -m vibecodekit.team_mode record --gate <name>`
+  so `/vck-ship` Bước 0 can see them.
+* **`.github/workflows/ci.yml`** runs an `eval_select` preview step on
+  every PR + push (visibility-only — full pytest is still the gate).
+  `fetch-depth: 0` is now required for the merge-base computation.
+
+### Fixed (audit-correctness)
+
+* USAGE_GUIDE §18 + README cheat sheet were silently lost when the PR
+  #3 merge raced with the docs commit `28c69c9`.  Restored with
+  truthful wording (no aspirational claims about features that hadn't
+  shipped yet).
+
+### Verification
+
+* `pytest tests` — 554 passed (was 536 on 0.14.1; +18 new cases).
+* `conformance_audit --threshold 1.0` — 80/80 @ 100 % (was 77/77).
+* `validate_release_matrix.py` — L1 + L2 + L3 PASS.
+* CI: 3.9 / 3.11 / 3.12 — pending (this commit triggers).
+
+The remaining tasks (T3 learnings session_start auto-inject, T4
+classifier auto-on, T5 scaffold seeds, T6 master `/vck-pipeline`
+command, T7 orphan-module probe, T9 broader integration probes, T10
+version bump) are deferred to PR-B / PR-C / PR-D per the integration
+plan.
+
 ## [0.14.1] — RRI-T deep audit fixes (P0 + P1 from v0.14.0 audit cycle)
 
 Cycle hardening pass after the v0.14.0 merge.  The deep RRI-T audit

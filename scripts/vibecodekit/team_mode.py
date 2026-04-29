@@ -182,6 +182,33 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
     show = sub.add_parser("show", help="Print the current team config as JSON")
     _ = show
 
+    check = sub.add_parser(
+        "check",
+        help="Verify required gates from .vibecode/team.json have been "
+             "recorded in the session ledger.  Exit 0 if pass (or no team "
+             "config), 2 on TeamGateViolation.",
+    )
+    check.add_argument(
+        "--gates-run", default=None,
+        help="Comma-separated list of gates already run.  Overrides the "
+             "session ledger when given (useful for one-shot CI checks).",
+    )
+    check.add_argument(
+        "--quiet", action="store_true",
+        help="Suppress success message; failure always prints to stderr.",
+    )
+
+    record = sub.add_parser(
+        "record",
+        help="Append a gate-completion row to the session ledger.",
+    )
+    record.add_argument("--gate", required=True,
+                        help="Gate name, e.g. /vck-review")
+
+    sub.add_parser(
+        "clear", help="Wipe the session ledger after a successful ship cycle.",
+    )
+
     args = ap.parse_args(argv)
     if args.cmd == "init":
         cfg = TeamConfig(
@@ -199,6 +226,43 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:
             print("(no team config)")
             return 1
         print(json.dumps(cfg.as_dict(), ensure_ascii=False, indent=2))
+        return 0
+    if args.cmd == "check":
+        # Lazy import so the module remains importable even when the
+        # ledger module is being refactored out of band.
+        from . import session_ledger
+        if args.gates_run is not None:
+            gates = [g.strip() for g in args.gates_run.split(",") if g.strip()]
+        else:
+            gates = session_ledger.gates_run()
+        cfg = read_team_config()
+        if cfg is None:
+            if not args.quiet:
+                print("team_mode: no .vibecode/team.json — skipping gate check")
+            return 0
+        try:
+            assert_required_gates_run(gates)
+        except TeamGateViolation as exc:
+            import sys
+            sys.stderr.write(f"team_mode: {exc}\n")
+            sys.stderr.write(
+                f"team_mode: gates already run = {sorted(set(gates)) or '(none)'}\n"
+            )
+            return 2
+        if not args.quiet:
+            print(
+                f"team_mode: all required gates satisfied for team "
+                f"{cfg.team_id!r} ({sorted(cfg.required)})"
+            )
+        return 0
+    if args.cmd == "record":
+        from . import session_ledger
+        entry = session_ledger.record_gate(args.gate)
+        print(json.dumps(entry, ensure_ascii=False))
+        return 0
+    if args.cmd == "clear":
+        from . import session_ledger
+        session_ledger.clear()
         return 0
     return 2
 

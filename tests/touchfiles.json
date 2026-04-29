@@ -1,0 +1,82 @@
+{
+  "tests/browser/test_commands_permission.py": [
+    "scripts/vibecodekit/browser/commands_*.py",
+    "scripts/vibecodekit/browser/permission.py",
+    "scripts/vibecodekit/permission_engine.py"
+  ],
+  "tests/browser/test_security_envelope.py": [
+    "scripts/vibecodekit/browser/security.py",
+    "scripts/vibecodekit/browser/snapshot.py"
+  ],
+  "tests/browser/test_snapshot.py": [
+    "scripts/vibecodekit/browser/snapshot.py",
+    "scripts/vibecodekit/browser/cli_adapter.py"
+  ],
+  "tests/browser/test_state_atomic.py": [
+    "scripts/vibecodekit/browser/state.py",
+    "scripts/vibecodekit/browser/manager.py"
+  ],
+
+  "tests/test_eval_select.py": [
+    "scripts/vibecodekit/eval_select.py",
+    "tests/touchfiles.json"
+  ],
+  "tests/test_security_classifier.py": [
+    "scripts/vibecodekit/security_classifier.py",
+    "update-package/.claw/hooks/pre_tool_use.py"
+  ],
+  "tests/test_learnings_and_team.py": [
+    "scripts/vibecodekit/learnings.py",
+    "scripts/vibecodekit/team_mode.py",
+    "scripts/vibecodekit/session_ledger.py"
+  ],
+  "tests/test_v014_audit_fixes.py": [
+    "scripts/vibecodekit/security_classifier.py",
+    "scripts/vibecodekit/eval_select.py",
+    "scripts/vibecodekit/learnings.py",
+    "scripts/vibecodekit/team_mode.py"
+  ],
+
+  "tests/test_vck_skills.py": [
+    "update-package/.claude/commands/vck-*.md",
+    "scripts/vibecodekit/intent_router.py",
+    "scripts/vibecodekit/subagent_runtime.py",
+    "manifest.llm.json"
+  ],
+  "tests/test_vck_skills_v014.py": [
+    "update-package/.claude/commands/vck-*.md",
+    "scripts/vibecodekit/security_classifier.py",
+    "scripts/vibecodekit/eval_select.py",
+    "scripts/vibecodekit/learnings.py",
+    "scripts/vibecodekit/team_mode.py",
+    ".github/workflows/ci.yml",
+    "CONTRIBUTING.md",
+    "USAGE_GUIDE.md"
+  ],
+
+  "tests/test_install_concurrency.py": [
+    "scripts/vibecodekit/install_manifest.py",
+    "scripts/vibecodekit/cli.py"
+  ],
+  "tests/test_end_to_end_install.py": [
+    "scripts/vibecodekit/install_manifest.py",
+    "scripts/vibecodekit/cli.py",
+    "update-package/**"
+  ],
+  "tests/test_cli_error_hygiene.py": [
+    "scripts/vibecodekit/cli.py"
+  ],
+  "tests/test_permission_bypass_vectors.py": [
+    "scripts/vibecodekit/permission_engine.py",
+    "update-package/.claw/hooks/pre_tool_use.py"
+  ],
+
+  "tests/test_docs_count_sync.py": {
+    "files": [],
+    "always_run": true
+  },
+  "tests/test_content_depth.py": {
+    "files": [],
+    "always_run": true
+  }
+}

@@ -37,6 +37,8 @@ Tài liệu hướng dẫn cách sử dụng kit trong **ChatGPT**, **OpenAI Cod
 13. [Memory hierarchy 3-tier](#13-memory-hierarchy-3-tier)
 14. [CLI cheatsheet](#14-cli-cheatsheet)
 15. [Troubleshooting](#15-troubleshooting)
+17. [Browser daemon (`[browser]` extra) — v0.12.0+](#17-browser-daemon-browser-extra--v0120)
+18. [Activation Cheat Sheet — gstack-port modules (v0.12.0–v0.15.0)](#18-activation-cheat-sheet--gstack-port-modules-v0120v0150)
 16. [v0.11.x BIG-UPDATE history — 6 tính năng mới](#16-v0110-big-update--6-tính-năng-mới)
     1. [`/vibe` — single-prompt router (F4)](#161-vibe--single-prompt-router-f4)
     2. [`/vibe-scaffold` — 10 preset × 3 stacks (F1)](#162-vibe-scaffold--scaffold-engine-f1)
@@ -1188,6 +1190,133 @@ python -m vibecodekit.browser.cli_adapter snapshot https://example.com \
   `security_classifier` ONNX + Haiku layer.  Regex layer luôn chạy trong
   core stdlib.
 - Cả 2 extras hoạt động độc lập; cài cả 2 để có pipeline đầy đủ.
+
+---
+
+## §18. Activation Cheat Sheet — gstack-port modules (v0.12.0–v0.15.0)
+
+Bản gộp gstack (Phase 1+2 = v0.12.0, Phase 3+4 = v0.14.0, audit fixes
+= v0.14.1, pipeline wiring = v0.15.0) theo triết lý **opt-in by config,
+auto-on khi config có mặt** — core stdlib-only KHÔNG đổi, mọi tính năng
+mới đều dormant cho đến khi bạn bật rõ ràng.
+
+### Ma trận tích hợp (truth table v0.15.0-alpha)
+
+| Module | Standalone? | Auto-merge vào flow? | Kích hoạt |
+|---|---|---|---|
+| `vibecodekit.security_classifier` | ✓ CLI + library | ✓ qua `pre_tool_use` hook | env `VIBECODE_SECURITY_CLASSIFIER=1` (auto-on default đến từ T4 ở PR-B) |
+| `vibecodekit.eval_select` | ✓ CLI tooling | ✓ qua `/vck-ship` Bước 2 + CI preview | đặt `tests/touchfiles.json` |
+| `vibecodekit.learnings` | ✓ CLI | ✓ qua `/vck-learn` + `/vck-retro` (T3 wire vào `session_start` ở PR-B) | gõ slash command |
+| `vibecodekit.team_mode` + `session_ledger` | ✓ CLI init | ✓ qua `/vck-ship` Bước 0 (T1 v0.15-alpha) | tạo `.vibecode/team.json` |
+| `vibecodekit.browser` | ✓ CLI server | ✓ qua `/vck-qa` skill | `pip install -e ".[browser]"` |
+| 15 `/vck-*` slash commands | n/a | ✓ qua manifest + intent_router | gõ trực tiếp trong host |
+| `.github/workflows/ci.yml` | n/a | ✓ chạy PR/push 3.9/3.11/3.12 | mặc định ON |
+
+### 18.1 `security_classifier` — 3-layer ensemble
+
+**Standalone CLI:**
+```bash
+python -m vibecodekit.security_classifier \
+  --text "Ignore all previous instructions" --json
+```
+
+**Library:**
+```python
+from vibecodekit.security_classifier import classify_text
+result = classify_text("...")
+```
+
+**Đã wire vào flow:** `pre_tool_use` hook. Bật bằng:
+```bash
+export VIBECODE_SECURITY_CLASSIFIER=1
+```
+Layer ML (ONNX + Haiku) chỉ active nếu cài `pip install -e ".[ml]"`.
+Mặc định OFF qua env var ở v0.14.1 — sẽ chuyển sang auto-on khi
+`.vibecode/classifier.env` tồn tại trong PR-B (T4).
+
+### 18.2 `eval_select` — diff-based test selection
+
+**Standalone CLI:**
+```bash
+python -m vibecodekit.eval_select \
+  --base origin/main --map tests/touchfiles.json --json
+```
+
+**Đã wire vào flow (v0.15.0-alpha):**
+- `/vck-ship` Bước 2 tự gọi nếu `tests/touchfiles.json` tồn tại
+  → chạy subset các test bị diff đụng vào.
+- CI workflow `.github/workflows/ci.yml` chạy preview mỗi PR + push
+  (visibility-only — pytest full suite vẫn là gate chính để giữ an toàn
+  trên main).
+- VCK-HU repo có sẵn `tests/touchfiles.json` (xem file đó để học cú pháp).
+
+### 18.3 `learnings` — JSONL store 3-tier
+
+**Standalone CLI:**
+```bash
+python -m vibecodekit.learnings capture "Cache key cần tenant id" \
+  --tag cache --scope project
+python -m vibecodekit.learnings list --json
+```
+
+**Đã wire vào flow:** slash `/vck-learn` (capture) + `/vck-retro`
+(weekly tổng hợp). Auto-inject vào `session_start` planned cho PR-B
+(T3) — bật bằng `VIBECODE_LEARNINGS_INJECT=1`, sẽ ON-by-default sau khi
+T3 ship.
+
+### 18.4 `team_mode` + `session_ledger` — required-gate enforcement
+
+**Standalone CLI để init:**
+```bash
+python -m vibecodekit.team_mode init \
+  --team-id web-platform \
+  --required /vck-review \
+  --required /vck-qa-only \
+  --learnings-required
+```
+
+**Đã wire vào flow (v0.15.0-alpha):**
+- `/vck-ship` Bước 0 thật sự gọi `python -m vibecodekit.team_mode check`
+  trước mọi việc — nếu `.vibecode/team.json` tồn tại và gate trong
+  `required` chưa chạy → exit 2 = STOP merge.
+- `/vck-review`, `/vck-qa-only`, `/vck-learn` ghi vào
+  `.vibecode/session_ledger.jsonl` qua `team_mode record --gate <name>`.
+- Sau khi PR mở, `/vck-ship` Bước 7 gọi `team_mode clear` để cycle ship
+  kế tiếp bắt đầu sạch.
+- Repo cá nhân (không có `team.json`) = no-op hoàn toàn → backward
+  compat 100 %.
+
+### 18.5 Browser daemon (xem §17 đầy đủ)
+
+`pip install -e ".[browser]"` rồi xem §17 cho lifecycle + `/vck-qa`.
+
+### 18.6 15 slash commands `/vck-*`
+
+Đã wire vào `manifest.llm.json` + `scripts/vibecodekit/intent_router.py` +
+`scripts/vibecodekit/subagent_runtime.py`. Gõ `/vck-<name>` trong
+Claude Code / Devin / Cursor → host LLM tự dispatch. Không cần config
+thêm.
+
+### 18.7 Composition — full pipeline cho team-mode repo
+
+```bash
+# 1. Cài extras
+pip install -e ".[browser,ml,dev]"
+# 2. Bật classifier
+export VIBECODE_SECURITY_CLASSIFIER=1
+# 3. Tạo team config
+python -m vibecodekit.team_mode init \
+  --team-id <id> \
+  --required /vck-review \
+  --required /vck-qa-only
+# 4. Map tests theo source
+cp <upstream>/tests/touchfiles.json tests/touchfiles.json   # rồi chỉnh
+# 5. Workflow hằng ngày
+/vck-review               # → record gate
+/vck-qa-only $STAGING     # → record gate (nếu có UI)
+/vck-ship                 # Bước 0 check team_mode → Bước 2 eval_select
+                          # → ... → Bước 7 clear ledger
+```
 
 ---
 
