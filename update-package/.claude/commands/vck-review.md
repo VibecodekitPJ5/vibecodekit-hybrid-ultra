@@ -50,6 +50,32 @@ git diff <range> --unified=8 > /tmp/vck-review-diff.patch
 ### Bước 2 — Spawn 7 sub-agents song song
 Mỗi sub-agent chỉ thấy diff + reference hạn chế. Wire qua `subagent_runtime.spawn_for_command("vck-review", role=<specialist>)`.
 
+### Bước 2.5 — Security perspective: classifier scan-diff (v0.15.2 / Bug #2)
+
+Sub-agent **Security** ngoài việc phỏng vấn diff bằng prompt, còn chạy
+`security_classifier --scan-diff <range>` để bổ sung verdict cơ học.
+Output JSON merge vào bảng tổng kết Bước 3 — mỗi entry `decision="deny"`
+sẽ cộng dồn 1 finding `CRITICAL/security` (regex layer) hoặc `HIGH` nếu
+chỉ ML layer (haiku/onnx) vote deny.
+
+```bash
+python -m vibecodekit.security_classifier --scan-diff "$BASE" \
+  > /tmp/vck-review-classifier.json
+
+# Đọc + parse trong sub-agent Security:
+python -c "
+import json, sys
+out = json.load(open('/tmp/vck-review-classifier.json'))
+for v in out['verdicts']:
+    if v['decision'] == 'deny':
+        print(f\"  classifier:deny  {v['path']}  {v['reason']}\")
+"
+```
+
+Skill này KHÔNG block khi classifier abstain trên mọi layer — đó là
+trạng thái mặc định khi ONNX/Haiku layer chưa cấu hình. Chỉ verdict
+`deny` mới đẩy review state sang RED.
+
 ### Bước 3 — Synthesize
 Tổng hợp findings vào bảng:
 ```

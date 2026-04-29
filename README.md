@@ -1,10 +1,10 @@
 # VibecodeKit Hybrid Ultra
 
-> **Current release:** v0.15.0 ([CHANGELOG](CHANGELOG.md))
+> **Current release:** v0.15.2 ([CHANGELOG](CHANGELOG.md))
 > A defensive, audit-driven runtime + skill bundle for AI-assisted
 > coding workflows.  Ships with VIBECODE-MASTER v5 methodology,
 > RRI-T / RRI-UI / RRI-UX question banks, a permission engine,
-> a scaffold engine, a Python-pure browser daemon, and an **85-probe
+> a scaffold engine, a Python-pure browser daemon, and an **87-probe
 > self-audit gate**.
 
 > **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
@@ -17,7 +17,7 @@ team-mode + eval_select wired into `/vck-ship`, security classifier +
 learnings inject auto-on, scaffold seeds for `.vibecode/`, the master
 `/vck-pipeline` router, and a new audit probe that fails CI if any
 module under `scripts/vibecodekit/` lacks a production call site —
-lifting the conformance audit to **85 / 85 @ 100 %**.
+lifting the conformance audit to **87 / 87 @ 100 %** (was 85 / 85 in v0.15.0; +2 probes from v0.15.2).
 v0.14.0 added eight `/vck-*` commands (plan reviews + polish), an
 optional `security_classifier` ensemble (`[ml]` extra), per-project
 learnings / team-mode coordination stores, GitHub Actions CI, and

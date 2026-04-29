@@ -34,6 +34,28 @@ Bạn **KHÔNG** sửa code. Bạn xuất ra **Security Posture Report** với f
 
 ## Pipeline 7 phase
 
+### Phase 0 — Regex pre-scan (v0.15.2 / Bug #3, ~5 phút)
+
+Trước khi vào 7 phase manual, chạy `security_classifier --scan-paths`
+trên các file thay đổi gần nhất để bắt nhanh secret/prompt-injection mà
+không cần Haiku/ONNX layer (regex layer luôn-on, stdlib-only).
+
+```bash
+# Liệt kê file thay đổi giữa working tree và origin/main
+mapfile -t CHANGED < <(git diff --name-only --diff-filter=ACMRT origin/main...HEAD)
+
+if [ ${#CHANGED[@]} -gt 0 ]; then
+  python -m vibecodekit.security_classifier --scan-paths "${CHANGED[@]}" \
+    > /tmp/vck-cso-pre-scan.json
+fi
+```
+
+Verdict format: xem `scripts/vibecodekit/security_classifier.py:scan_paths()`.
+Mỗi `decision="deny"` từ regex layer ⇒ pre-fill bảng Phase A finding với
+severity = `Critical` (regex match) hoặc `High` (chỉ ML deny).  Phase A
+manual review vẫn chạy bình thường — pre-scan chỉ tăng signal, không
+thay thế.
+
 ### Phase A — Secrets archaeology (15 phút)
 1. `git log --all -p -G '(api|secret|token|password|key)[_-]?[a-z0-9]*\\s*=' | head -200`
 2. `gitleaks detect --no-banner` (nếu có) hoặc `trufflehog filesystem .`

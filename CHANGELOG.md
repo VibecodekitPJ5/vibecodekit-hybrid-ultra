@@ -4,6 +4,63 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.15.2] — T4-completion: classifier wired into /vck-review + /vck-cso
+
+Closes Bug #2 + Bug #3 from the v0.15.0 deep-dive audit
+(`/home/ubuntu/audit-v015-deepdive.md`).  This is a pure follow-up to
+v0.15.0 — no behaviour change for repos that don't run the review/CSO
+skills; runtime `pre_tool_use` hook unaffected.
+
+### Added
+
+* **`security_classifier` CLI flags `--scan-paths` and `--scan-diff`.**
+  New module-level helpers `scan_paths(paths, ...)` and
+  `scan_diff(base, ...)` return a canonical JSON dict
+  `{scope, files_scanned, verdicts, summary, exit_code}` so skills can
+  parse classifier verdicts deterministically.  Mutually exclusive with
+  `--text`; `--scan-diff` exits 2 if any verdict is `deny`.
+* **Conformance probe #86 — `vck_review_classifier_wired`.**  Asserts
+  that `update-package/.claude/commands/vck-review.md` references both
+  `security_classifier` and `--scan-diff`.  Without this probe the
+  wiring could regress silently because no other gate inspects the
+  markdown skills.
+* **Conformance probe #87 — `vck_cso_classifier_wired`.**  Same shape
+  as #86, asserting `vck-cso.md` invokes `--scan-paths`.
+* **15 regression tests** in `tests/test_v015_2_t4_completion.py`
+  covering `scan_paths` / `scan_diff` library APIs, the CLI wrappers
+  including mutex enforcement, the markdown wiring, and both probes
+  passing/failing on synthetic inputs.
+
+### Changed
+
+* **`vck-review.md`** gains a new "Bước 2.5 — Security perspective:
+  classifier scan-diff" step.  The Security sub-agent now runs
+  `security_classifier --scan-diff <range>` in addition to its
+  free-form interrogation of the diff and merges any `decision="deny"`
+  verdicts into the synthesis table.
+* **`vck-cso.md`** gains a new "Phase 0 — Regex pre-scan" step that
+  enumerates changed files via
+  `git diff --name-only --diff-filter=ACMRT origin/main...HEAD` and
+  feeds them to `security_classifier --scan-paths` before the seven
+  manual phases; regex-layer hits pre-fill Phase A findings.
+* **README + CONTRIBUTING + CI step name** bumped to **87 / 87 @ 100 %**.
+
+### Verification
+
+* `pytest tests -q` — 488 passed (was 473 in v0.15.0; +15 from this PR).
+* `python -m vibecodekit.conformance_audit --threshold 1.0` —
+  87 / 87 @ 100 % (CI mode with `VIBECODE_UPDATE_PACKAGE` set).
+* `python tools/validate_release_matrix.py` — L1 + L2 + L3 PASS.
+
+### Why this is its own release
+
+The v0.15.0 deep-dive audit found that T4 ("auto-on classifier") landed
+the runtime hook + the env-var default but skipped the markdown wiring
+on the two skills that were supposed to *use* the classifier at the
+review/audit gates.  This PR finishes that wiring without re-opening
+the v0.15.0 rollout (PR-A/B/C/D), so the dormant-module guard now holds
+at three call-site classes — runtime hook, CSO audit, and review gate.
+
 ## [0.15.0] — One Pipeline, Zero Dead-Code (PR-D — orphan-module probe + version cut)
 
 Final slice of the v0.15.0 "One Pipeline, Zero Dead-Code" rollout

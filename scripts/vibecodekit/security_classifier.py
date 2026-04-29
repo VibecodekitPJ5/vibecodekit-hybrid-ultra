@@ -49,6 +49,8 @@ __all__ = [
     "HaikuLayer",
     "Classifier",
     "classify_text",
+    "scan_paths",
+    "scan_diff",
     "REGEX_PATTERNS",
     "load_default_classifier",
 ]
@@ -511,16 +513,251 @@ def classify_text(text: str, classifier: Optional[Classifier] = None) -> Classif
 
 
 # ---------------------------------------------------------------------------
+# Scan helpers (v0.15.2 / Bug #2 + #3)
+# ---------------------------------------------------------------------------
+# Both helpers return a dict in the canonical shape so ``/vck-review``
+# and ``/vck-cso`` skill markdowns can pipe-stitch the JSON output into
+# their adversarial verdict aggregation:
+#
+#     {
+#       "scope":     "paths" | "diff",
+#       "base":      <git-ref>            # diff scope only
+#       "paths":     [<str>, ...]          # paths scope only
+#       "files_scanned": <int>,
+#       "verdicts":  [{"path": ..., "decision": ..., "permission_class": ...,
+#                      "reason": ...,    "voters": [{"layer": ..., "vote": ...}, ...]},
+#                     ...],
+#       "summary":   {"total": N, "allow": A, "deny": D, "abstain": X},
+#       "exit_code": 0 if 0 deny else 2,
+#     }
+#
+# ``exit_code`` is rendered into the dict so callers that just parse
+# JSON (skill markdown, CI yaml) don't need to inspect the process
+# exit status separately.
+
+
+def _verdict_to_dict(path: str, res: ClassifierResult) -> dict:
+    return {
+        "path": path,
+        "decision": res.verdict.decision,
+        "permission_class": res.permission_class,
+        "permission_reason": res.permission_reason,
+        "reason": res.verdict.reason,
+        "voters": [{"layer": v.layer, "vote": v.vote, "reason": v.reason}
+                   for v in res.verdict.votes],
+    }
+
+
+def _summarise(verdicts: List[dict]) -> dict:
+    counts = {"total": len(verdicts), "allow": 0, "deny": 0, "abstain": 0}
+    for v in verdicts:
+        d = v["decision"]
+        counts[d] = counts.get(d, 0) + 1
+    return counts
+
+
+def scan_paths(paths: Iterable[str],
+               classifier: Optional[Classifier] = None,
+               root: Optional[Path] = None) -> dict:
+    """Classify the contents of each file path.
+
+    Missing / unreadable / binary files are recorded with
+    ``decision="abstain"`` and a ``reason`` explaining why the scan
+    skipped them.  Symlinks are followed.
+
+    Used by ``/vck-cso`` regex pre-scan (Bug #3 in the v0.15.0 audit).
+    """
+    c = classifier or load_default_classifier()
+    base = Path(root) if root is not None else Path.cwd()
+    verdicts: List[dict] = []
+    for raw in paths:
+        rel = str(raw)
+        p = (base / rel) if not Path(rel).is_absolute() else Path(rel)
+        try:
+            text = p.read_text(encoding="utf-8", errors="strict")
+        except FileNotFoundError:
+            verdicts.append({
+                "path": rel, "decision": "abstain",
+                "permission_class": "allow", "permission_reason": "skip:missing",
+                "reason": "file not found", "voters": [],
+            })
+            continue
+        except (UnicodeDecodeError, OSError) as exc:
+            verdicts.append({
+                "path": rel, "decision": "abstain",
+                "permission_class": "allow",
+                "permission_reason": f"skip:{type(exc).__name__}",
+                "reason": f"unreadable: {exc}", "voters": [],
+            })
+            continue
+        verdicts.append(_verdict_to_dict(rel, c.classify(text)))
+    summary = _summarise(verdicts)
+    return {
+        "scope": "paths",
+        "paths": [str(p) for p in paths],
+        "files_scanned": summary["total"],
+        "verdicts": verdicts,
+        "summary": summary,
+        "exit_code": 2 if summary.get("deny", 0) > 0 else 0,
+    }
+
+
+def scan_diff(base: str,
+              classifier: Optional[Classifier] = None,
+              root: Optional[Path] = None,
+              git: Optional[str] = None) -> dict:
+    """Classify each added-side hunk of ``git diff <base>...HEAD``.
+
+    Implementation strategy:
+
+    1. Resolve ``base`` via ``git rev-parse <base>``; if that fails fall
+       back to a literal commit-ish.
+    2. Enumerate changed paths via ``git diff --name-only --diff-filter=ACMRT
+       <base>...HEAD``.
+    3. For each path read the *current working-tree* content (post-merge
+       state) and classify it — this lines up with how ``/vck-review``
+       expects to scan a PR's "after" view.
+
+    Falls back gracefully when ``git`` is unavailable / not a repo /
+    invalid base — every error is recorded as an ``abstain`` verdict so
+    callers never crash.  Used by ``/vck-review`` Security perspective
+    (Bug #2 in the v0.15.0 audit).
+    """
+    import shutil
+    import subprocess
+
+    cwd = Path(root) if root is not None else Path.cwd()
+    git_bin = git or shutil.which("git") or "git"
+    verdicts: List[dict] = []
+
+    def _run(args: List[str]) -> Tuple[int, str]:
+        try:
+            proc = subprocess.run(
+                [git_bin, *args], cwd=str(cwd),
+                capture_output=True, text=True, timeout=60,
+            )
+            return proc.returncode, (proc.stdout or "") + (proc.stderr or "")
+        except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+            return 127, f"git invocation failed: {exc}"
+
+    rc_chk, _ = _run(["rev-parse", "--git-dir"])
+    if rc_chk != 0:
+        return {
+            "scope": "diff", "base": base, "files_scanned": 0,
+            "verdicts": [{
+                "path": "<repo>", "decision": "abstain",
+                "permission_class": "allow",
+                "permission_reason": "skip:not_a_git_repo",
+                "reason": "git rev-parse --git-dir failed", "voters": [],
+            }],
+            "summary": _summarise([]),
+            "exit_code": 0,
+        }
+
+    rc_names, names_out = _run([
+        "diff", "--name-only", "--diff-filter=ACMRT", f"{base}...HEAD",
+    ])
+    if rc_names != 0:
+        return {
+            "scope": "diff", "base": base, "files_scanned": 0,
+            "verdicts": [{
+                "path": "<base>", "decision": "abstain",
+                "permission_class": "allow",
+                "permission_reason": "skip:bad_base",
+                "reason": names_out.strip()[:200] or f"bad base ref: {base}",
+                "voters": [],
+            }],
+            "summary": _summarise([]),
+            "exit_code": 0,
+        }
+
+    paths = [p for p in names_out.splitlines() if p.strip()]
+    if not paths:
+        return {
+            "scope": "diff", "base": base, "files_scanned": 0,
+            "verdicts": [],
+            "summary": _summarise([]),
+            "exit_code": 0,
+        }
+
+    c = classifier or load_default_classifier()
+    for rel in paths:
+        p = cwd / rel
+        try:
+            text = p.read_text(encoding="utf-8", errors="strict")
+        except FileNotFoundError:
+            # Path was deleted post-diff (filter=ACMRT excludes D, but
+            # race conditions happen on a checked-out worktree).
+            verdicts.append({
+                "path": rel, "decision": "abstain",
+                "permission_class": "allow",
+                "permission_reason": "skip:deleted",
+                "reason": "file vanished between diff and read",
+                "voters": [],
+            })
+            continue
+        except (UnicodeDecodeError, OSError) as exc:
+            verdicts.append({
+                "path": rel, "decision": "abstain",
+                "permission_class": "allow",
+                "permission_reason": f"skip:{type(exc).__name__}",
+                "reason": f"unreadable: {exc}", "voters": [],
+            })
+            continue
+        verdicts.append(_verdict_to_dict(rel, c.classify(text)))
+    summary = _summarise(verdicts)
+    return {
+        "scope": "diff",
+        "base": base,
+        "files_scanned": summary["total"],
+        "verdicts": verdicts,
+        "summary": summary,
+        "exit_code": 2 if summary.get("deny", 0) > 0 else 0,
+    }
+
+
+# ---------------------------------------------------------------------------
 # CLI helper
 # ---------------------------------------------------------------------------
 
 def _main(argv: Optional[Sequence[str]] = None) -> int:
     import argparse
     import sys as _sys
-    ap = argparse.ArgumentParser(description="Run the prompt-injection classifier on stdin or --text.")
+    ap = argparse.ArgumentParser(
+        description=("Run the prompt-injection / secret-leak classifier on "
+                     "stdin, --text, --scan-diff <base>, or --scan-paths "
+                     "<p1> <p2> …"))
     ap.add_argument("--text", help="Inline text; otherwise stdin is read.")
-    ap.add_argument("--json", action="store_true", help="Emit the full result as JSON.")
+    ap.add_argument("--json", action="store_true",
+                    help="Emit the full result as JSON.")
+    ap.add_argument(
+        "--scan-diff", dest="scan_diff", default=None, metavar="BASE",
+        help=("Classify the post-state of every changed file in "
+              "git diff <BASE>...HEAD.  JSON output by default; "
+              "exit 2 if any file's verdict is deny."))
+    ap.add_argument(
+        "--scan-paths", dest="scan_paths", nargs="+", default=None,
+        metavar="PATH",
+        help=("Classify the contents of each PATH (one or more).  "
+              "JSON output by default; exit 2 if any verdict is deny."))
     args = ap.parse_args(argv)
+
+    # Mutex: exactly one of --text / --scan-diff / --scan-paths / stdin.
+    n_modes = sum(x is not None for x in
+                  (args.text, args.scan_diff, args.scan_paths))
+    if n_modes > 1:
+        ap.error("--text, --scan-diff, --scan-paths are mutually exclusive")
+
+    if args.scan_diff is not None:
+        out = scan_diff(args.scan_diff)
+        # --scan-* outputs are inherently structured → always JSON.
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return out["exit_code"]
+    if args.scan_paths is not None:
+        out = scan_paths(args.scan_paths)
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return out["exit_code"]
+
     text = args.text if args.text is not None else _sys.stdin.read()
     res = classify_text(text)
     if args.json:
