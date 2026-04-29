@@ -34,14 +34,14 @@ VIBECODE_UPDATE_PACKAGE="$(pwd)/update-package" \
 | `update-package/` | The reconciled overlay copied into target projects. |
 | `update-package/.claude/commands/` | 26 `/vibe-*` + 14 `/vck-*` slash commands. |
 | `update-package/.claude/agents/` | 7 sub-agent profiles (coordinator/scout/builder/qa/security/reviewer/qa-lead). |
-| `tests/` | 500+ pytest cases (unit + browser + skill sanity). |
+| `tests/` | 470+ pytest cases (unit + browser + skill sanity). |
 
 ## Quality gates (mandatory)
 
 All PRs MUST pass:
 
-1. `pytest tests -q` — full suite (no skips beyond the existing 15).
-2. `python -m vibecodekit.conformance_audit --threshold 1.0` — 77 / 77 probes.
+1. `pytest tests -q` — full suite, currently 473 passed / 0 skipped.
+2. `python -m vibecodekit.conformance_audit --threshold 1.0` — 85 / 85 probes.
 3. `python tools/validate_release_matrix.py --skill . --update ./update-package` —
    L1 + L2 + L3 layouts pass.
 4. CI on the PR (`.github/workflows/ci.yml`) — green.

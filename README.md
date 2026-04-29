@@ -4,7 +4,7 @@
 > A defensive, audit-driven runtime + skill bundle for AI-assisted
 > coding workflows.  Ships with VIBECODE-MASTER v5 methodology,
 > RRI-T / RRI-UI / RRI-UX question banks, a permission engine,
-> a scaffold engine, a Python-pure browser daemon, and a **77-probe
+> a scaffold engine, a Python-pure browser daemon, and an **85-probe
 > self-audit gate**.
 
 > **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
@@ -12,10 +12,16 @@
 
 ## Skills inspired by gstack
 
-v0.14.0 adds eight more `/vck-*` commands (plan reviews + polish), an
+v0.15.0 closes the **One Pipeline, Zero Dead-Code** rollout:
+team-mode + eval_select wired into `/vck-ship`, security classifier +
+learnings inject auto-on, scaffold seeds for `.vibecode/`, the master
+`/vck-pipeline` router, and a new audit probe that fails CI if any
+module under `scripts/vibecodekit/` lacks a production call site —
+lifting the conformance audit to **85 / 85 @ 100 %**.
+v0.14.0 added eight `/vck-*` commands (plan reviews + polish), an
 optional `security_classifier` ensemble (`[ml]` extra), per-project
 learnings / team-mode coordination stores, GitHub Actions CI, and
-`CONTRIBUTING.md` — lifting the conformance audit to **77 / 77 @ 100 %**.
+`CONTRIBUTING.md`.
 v0.12.0 introduced seven `/vck-*` slash commands and a Python browser
 daemon adapted — with attribution — from
 [gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
