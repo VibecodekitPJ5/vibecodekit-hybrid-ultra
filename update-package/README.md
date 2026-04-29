@@ -57,7 +57,7 @@ ca pytest tăng theo thời gian — chạy `pytest --collect-only -q | tail`
 
 [^bench]: Internal regression gate — chi tiết "87/87" đo cái gì xem `BENCHMARKS-METHODOLOGY.md` (architectural invariants only, không phải benchmark code-quality ngoài như HumanEval / SWE-bench).
 
-v0.11.4.1 / v0.15.4 are preserved as historical milestones in `CHANGELOG.md`.
+Lịch sử các milestone (v0.11.x / v0.15.x / v0.16.x) được giữ trong `CHANGELOG.md`.
 
 See `ai-rules/vibecodekit/SKILL.md`, `ai-rules/vibecodekit/references/00-overview.md`
 and `CLAUDE.md` for the complete methodology reference.

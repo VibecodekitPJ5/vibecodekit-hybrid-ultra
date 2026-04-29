@@ -123,59 +123,82 @@ if _ver_file.is_file():
 def _is_historical_heading(heading: str) -> bool:
     """Heading text (without ``#``) is historical if:
     - it is explicitly tagged ``(historical)``; **or**
-    - it starts with a version literal (``v0.11.2 ...`` / ``[0.11.2]`` /
-      ``0.11.2 ...``) and that version is **not** the current release.
+    - it **contains anywhere** a version literal (``v0.11.2`` /
+      ``[0.11.2]`` / ``(v0.10.3 fix)`` / ``— gstack-port modules
+      (v0.12.0–v0.15.0)``) and that version is **not** the current
+      release.  Pre-PR2 chỉ match khi heading bắt đầu bằng version
+      literal; PR2 mở rộng để các subsection kiểu
+      ``### 12.3 Stdio (v0.10.2 fix)`` cũng được coi là historical.
     """
     stripped = heading.strip()
     if re.search(r"\(historical\)", stripped, re.IGNORECASE):
         return True
-    m = re.match(
-        r"^(?:\[)?v?(0\.\d+(?:\.\d+)?)\b",
-        stripped,
-        re.IGNORECASE,
-    )
-    if not m:
-        return False
-    return m.group(1) != _CURRENT_VERSION and not _CURRENT_VERSION.startswith(m.group(1))
+    for m in re.finditer(r"\bv?(0\.\d+(?:\.\d+)?)\b", stripped):
+        ver = m.group(1)
+        if ver != _CURRENT_VERSION and not _CURRENT_VERSION.startswith(ver):
+            return True
+    return False
 
 
 def _strip_historical(body: str) -> str:
     """Drop content that is explicitly labelled as historical so the
     regex guard only flags forward-facing prose.
 
-    Heuristics:
-    1. Markdown sections whose heading starts with a *non-current*
-       version literal (``## v0.11.2 ...``, ``## [0.11.0] ...``) are
-       dropped in full — they are mini-changelog entries inline in
-       SKILL.md or USAGE_GUIDE.md.  Sections whose heading starts with
-       the *current* version are kept (this file is scanning forward-
-       facing prose, which obviously describes the current release).
+    Heuristics (PR2 expanded):
+    1. Markdown sections whose heading is historical (per
+       :func:`_is_historical_heading` — chứa bất kỳ version literal
+       non-current hoặc tag ``(historical)``) are dropped in full.
+       Skip levels are tracked với một **stack** để nested historical
+       subsections (level 3 trong level 2) không "unskip" parent
+       section khi sibling subsection kế tiếp không historical.
     2. Sections explicitly tagged ``(historical)`` are dropped.
     3. Table rows that start with ``| 0.x.y |`` or ``| v0.x.y |`` are
        changelog-style version history rows — dropped.
+    4. Bullets kiểu ``- **vX.Y.Z** — ...`` (changelog-style entry list)
+       được bỏ qua — đây là history list, không phải claim status.
+    5. Nội dung trong fenced code block (``\`\`\` ... \`\`\```) được
+       loại trừ vì thường là ví dụ / lệnh shell chứa tên file
+       version-stamped (`vibecodekit-hybrid-ultra-vX.Y.Z-skill.zip`).
     """
     out: list[str] = []
-    skip_section_depth: int | None = None
+    # Stack of section levels currently being skipped (outermost first).
+    # Using a stack instead of a single int handles nested historical
+    # sections correctly: when leaving a level-3 historical subsection
+    # back into a level-3 sibling that is *not* historical, we still
+    # respect the level-2 ancestor skip if that was historical.
+    skip_stack: list[int] = []
+    in_fence = False
 
     section_re = re.compile(r"^(#+)\s*(.*)$")
     table_row_re = re.compile(r"^\|\s*v?0\.\d+\.\d+\s*\|")
+    fence_re = re.compile(r"^\s*```")
+    cl_bullet_re = re.compile(r"^\s*[-*]\s+\*\*v?0\.\d+\.\d+")
 
     for line in body.splitlines():
+        if fence_re.match(line):
+            in_fence = not in_fence
+            continue
+        if in_fence:
+            continue
+
         m = section_re.match(line)
         if m:
             hashes, heading_body = m.group(1), m.group(2)
             level = len(hashes)
-            # Leaving a currently-skipped section?
-            if skip_section_depth is not None and level <= skip_section_depth:
-                skip_section_depth = None
+            # Pop skip levels >= current (we've left those sections).
+            while skip_stack and level <= skip_stack[-1]:
+                skip_stack.pop()
             if _is_historical_heading(heading_body):
-                skip_section_depth = level
+                skip_stack.append(level)
                 continue
 
-        if skip_section_depth is not None:
+        if skip_stack:
             continue
 
         if table_row_re.match(line):
+            continue
+
+        if cl_bullet_re.match(line):
             continue
 
         out.append(line)
@@ -191,6 +214,44 @@ def test_no_stale_release_counts(doc: Path, pattern: str) -> None:
     assert not matches, (
         f"stale release-count substring {pattern!r} appears in {doc.name} "
         f"outside historical changelog entries: {matches}"
+    )
+
+
+# --- PR2: drift guard cho version literal forward-facing -------------
+# Mục tiêu: bất kỳ literal version `v0.10.x`–`v0.16.x` nào xuất hiện
+# trong prose forward-facing (ngoài section "Historical" / "Changelog",
+# ngoài fenced code block, ngoài table version-history) đều bị flag.
+# Chỉ literal `v<CURRENT_VERSION>` được phép vì nó nói trạng thái hiện tại.
+# Test này khiến lần drift số liệu / version anchor tiếp theo (vd. khi
+# bump v0.16.2 → v0.17.0 mà quên cập nhật prose) bị CI chặn ngay.
+
+_VERSION_LITERAL_PATTERN = re.compile(r"\bv0\.1[0-6]\.\d+\b")
+
+
+@pytest.mark.parametrize("doc", [d for d in CURRENT_DOCS if d.exists()])
+def test_no_stale_version_literals_in_forward_prose(doc: Path) -> None:
+    body = _strip_historical(doc.read_text(encoding="utf-8"))
+    bad: list[tuple[int, str]] = []
+    for ln_no, line in enumerate(body.splitlines(), 1):
+        for m in _VERSION_LITERAL_PATTERN.finditer(line):
+            literal = m.group(0)
+            ver = literal[1:]  # bỏ chữ 'v'
+            # Literal == current version là chấp nhận được (đang nói
+            # trạng thái hiện tại); mọi literal version khác trong
+            # forward-facing prose phải được wrap (historical) hoặc
+            # đẩy vào CHANGELOG.md.
+            if ver == _CURRENT_VERSION:
+                continue
+            bad.append((ln_no, line.rstrip()))
+    assert not bad, (
+        f"Stale forward-facing version literals detected in {doc.name}.\n"
+        f"  Mỗi dòng dưới đây mention một version != {_CURRENT_VERSION!r} "
+        f"trong prose ngoài section/heading historical.  Cách fix:\n"
+        f"  - Wrap parent heading bằng `(historical)` hoặc đặt heading\n"
+        f"    chứa version literal non-current; HOẶC\n"
+        f"  - Bỏ literal khỏi dòng đó (ưu tiên tham chiếu CHANGELOG.md);\n"
+        f"    HOẶC chuyển dòng đó thành code block / table changelog row.\n"
+        + "\n".join(f"    L{ln}: {txt[:120]}" for ln, txt in bad)
     )
 
 

@@ -115,7 +115,7 @@ PYTHONPATH=scripts python -m vibecodekit.cli rri-t t.jsonl
 
 ## 3 câu hỏi thường gặp
 
-**Q: Dùng được trên Windows không?**  A: Được.  v0.11.0 trở lên có
+**Q: Dùng được trên Windows không?**  A: Được.  Kit có sẵn
 `_platform_lock.py` dùng `msvcrt.locking()` trên Windows và
 `fcntl.flock()` trên Linux/macOS.  Test runtime cần Python 3.9+.
 

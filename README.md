@@ -25,20 +25,17 @@ and MCP selfcheck.  See [`examples/`](examples/) for standalone scripts.
 
 ## Skills inspired by gstack
 
-v0.15.0 closes the **One Pipeline, Zero Dead-Code** rollout:
-team-mode + eval_select wired into `/vck-ship`, security classifier +
-learnings inject auto-on, scaffold seeds for `.vibecode/`, the master
-`/vck-pipeline` router, and a new audit probe that fails CI if any
-module under `scripts/vibecodekit/` lacks a production call site —
-lifting the internal conformance self-test to 87 probes (was 85 in v0.15.0; see [`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md) for what this measures).
-v0.14.0 added eight `/vck-*` commands (plan reviews + polish), an
-optional `security_classifier` ensemble (`[ml]` extra), per-project
-learnings / team-mode coordination stores, GitHub Actions CI, and
-`CONTRIBUTING.md`.
-v0.12.0 introduced seven `/vck-*` slash commands and a Python browser
-daemon adapted — with attribution — from
+The `/vck-*` slash commands + Python browser daemon are adapted —
+with attribution — from
 [gstack](https://github.com/garrytan/gstack) (© Garry Tan, MIT,
-commit `675717e3`):
+commit `675717e3`).  Per-version evolution (which release introduced
+which subset, audit probe count growth, etc.) is tracked in
+[`CHANGELOG.md`](CHANGELOG.md); the kit currently ships **87** internal
+conformance probes — see
+[`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md) for what that
+number measures and what it does **not** claim.
+
+Canonical `/vck-*` inventory:
 
 - `/vck-cso` — Chief Security Officer audit (OWASP Top 10 + STRIDE).
 - `/vck-review` — 7-perspective adversarial review (architect / security / perf / a11y / ux / dx / risk).
@@ -46,6 +43,11 @@ commit `675717e3`):
 - `/vck-ship` — atomic test → review → qa → commit → push → PR.
 - `/vck-investigate` — NO-FIX-WITHOUT-INVESTIGATION root-cause flow.
 - `/vck-canary` — 30-minute post-deploy monitor.
+- (plus `/vck-pipeline`, `/vck-eng-review`, `/vck-ceo-review`,
+  `/vck-second-opinion`, `/vck-design-consultation`,
+  `/vck-design-review`, `/vck-office-hours`, `/vck-learn`,
+  `/vck-retro` — xem `manifest.llm.json` cho danh sách đầy đủ 16
+  command ở phiên bản hiện tại.)
 
 The browser daemon is a **clean-room Python reimplementation** of
 gstack's persistent-daemon architecture (atomic state file + idle
@@ -63,11 +65,11 @@ per-artefact attribution table and
 [`references/40-ethos-vck.md`](references/40-ethos-vck.md) for the
 ETHOS adaptation.
 
-### Activation cheat sheet (v0.15.0-alpha)
+### Activation cheat sheet
 
 | Module | Auto-merged into VCK-HU flow? | Activate by |
 |---|---|---|
-| `security_classifier` | ✓ via `pre_tool_use` hook (auto-on default since v0.15.0-alpha PR-B) | always on; opt-out `VIBECODE_SECURITY_CLASSIFIER=0` |
+| `security_classifier` | ✓ via `pre_tool_use` hook (auto-on default since the gstack-port wiring; xem CHANGELOG.md) | always on; opt-out `VIBECODE_SECURITY_CLASSIFIER=0` |
 | `eval_select` | ✓ via `/vck-ship` Bước 2 + CI preview | drop `tests/touchfiles.json` |
 | `learnings` | ✓ via `session_start` hook (auto-inject 10 latest, PR-B) + `/vck-learn` + `/vck-retro` | always on; opt-out `VIBECODE_LEARNINGS_INJECT=0` |
 | `team_mode` + `session_ledger` | ✓ via `/vck-ship` Bước 0 (gate enforcement) | `python -m vibecodekit.team_mode init …` |

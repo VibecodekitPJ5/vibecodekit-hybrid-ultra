@@ -13,7 +13,7 @@ description: >-
   dimensions × 8 flow physics axes), RRI-UI (four-phase design pipeline
   combining RRI-UX + RRI-T), VIBECODE-MASTER (3-actor, 8-step
   workflow SCAN → RRI → VISION → BLUEPRINT → TASK GRAPH → BUILD →
-  VERIFY → REFINE), plus the v0.11.0 BIG-UPDATE layer: F1 scaffold
+  VERIFY → REFINE), plus the BIG-UPDATE layer (xem `CHANGELOG.md` cho lineage chi tiết): F1 scaffold
   engine (10 preset × 3 stacks: Next.js / FastAPI / Expo), F2 deploy
   orchestrator (7 target: Vercel / Docker / VPS / Cloudflare / Railway
   / Fly / Render), F3 auto-commit hook + sensitive-file pre-write
