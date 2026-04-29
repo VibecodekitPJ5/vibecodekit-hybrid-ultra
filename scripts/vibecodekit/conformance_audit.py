@@ -1039,7 +1039,7 @@ def _probe_command_agent_binding(tmp: Path) -> Tuple[bool, str]:
 def _probe_skill_paths_activation(tmp: Path) -> Tuple[bool, str]:
     """v0.11.3 / Patch C — SKILL.md paths: globs activate skill on touched files.
 
-    Paths were narrowed in v0.16.3 to vibecodekit-specific globs only
+    Paths were narrowed in v0.16.2 to vibecodekit-specific globs only
     (reducing agent context pollution).  User source files like
     ``src/main.py`` should NOT activate the skill; overlay config files
     like ``SKILL.md`` and ``scripts/vibecodekit/cli.py`` should.
