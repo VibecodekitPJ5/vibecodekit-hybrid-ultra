@@ -755,6 +755,588 @@
       }
     },
     {
+      "name": "vibe verb",
+      "type": "cli",
+      "description": "Front-door 8-verb canonical (PR5) — map verb → slash command",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "verb_name": {
+            "type": "string",
+            "enum": [
+              "scan",
+              "plan",
+              "build",
+              "review",
+              "qa",
+              "ship",
+              "audit",
+              "doctor"
+            ],
+            "description": "Một trong 8 verb chuẩn"
+          },
+          "verb_args": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Args forward verbatim sang slash command đích"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "verb_name"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe verb <verb_name> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe subagent",
+      "type": "cli",
+      "description": "Spawn sub-agent (coordinator/scout/builder/qa/security/reviewer/qa-lead)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "spawn"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe subagent spawn [--root .]"
+      }
+    },
+    {
+      "name": "vibe task",
+      "type": "cli",
+      "description": "Background-task runtime (DAG of TIPs) — 7 task kinds × 5 states",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "start",
+              "agent",
+              "workflow",
+              "monitor",
+              "list",
+              "status",
+              "kill",
+              "read",
+              "dream",
+              "stalls"
+            ],
+            "description": "Sub-action; xem `vibe task <action> --help`"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe task <action> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe mcp",
+      "type": "cli",
+      "description": "MCP (Model Context Protocol) server management",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "list",
+              "register",
+              "disable",
+              "call",
+              "tools"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe mcp <action> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe ledger",
+      "type": "cli",
+      "description": "Token/cost ledger — summary hoặc reset usage tracking",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "summary",
+              "reset"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe ledger <summary|reset> [--root .]"
+      }
+    },
+    {
+      "name": "vibe approval",
+      "type": "cli",
+      "description": "Human-in-the-loop approval JSON contract",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "list",
+              "create",
+              "respond",
+              "get"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe approval <action> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe rri-t",
+      "type": "cli",
+      "description": "RRI-T release gate — 7 dimensions × 8 stress axes (testing matrix)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to JSONL file of RRI-T test entries"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe rri-t <path> [--root .]"
+      }
+    },
+    {
+      "name": "vibe rri-ux",
+      "type": "cli",
+      "description": "RRI-UX release gate — 7 dimensions × 8 Flow Physics axes (UX critique)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "Path to JSONL file of RRI-UX critique entries"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe rri-ux <path> [--root .]"
+      }
+    },
+    {
+      "name": "vibe vn-check",
+      "type": "cli",
+      "description": "Vietnamese 12-point release checklist gate",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "--flags-json": {
+            "type": "string",
+            "description": "Inline JSON dict {flag: bool}"
+          },
+          "--file": {
+            "type": "string",
+            "description": "Path tới JSON file chứa flags dict"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "description": "Yêu cầu chính xác 1 trong --flags-json hoặc --file (mutex)"
+      },
+      "invoke": {
+        "cli": "vibe vn-check (--flags-json '{...}' | --file flags.json) [--root .]"
+      }
+    },
+    {
+      "name": "vibe ship",
+      "type": "cli",
+      "description": "Deploy / ship to one of 7 targets (Vercel/Docker/VPS/Cloudflare/Railway/Fly/Render)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "history",
+              "rollback"
+            ],
+            "description": "Sub-action (optional)"
+          },
+          "--target": {
+            "type": "string",
+            "description": "Force a specific deploy target"
+          },
+          "--prod": {
+            "type": "boolean",
+            "default": false,
+            "description": "Production deploy (vercel only)"
+          },
+          "--dry-run": {
+            "type": "boolean",
+            "default": false,
+            "description": "Use DryRunner instead of real subprocess"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      },
+      "invoke": {
+        "cli": "vibe ship [--target <name>] [--prod] [--dry-run] [--root .]"
+      }
+    },
+    {
+      "name": "vibe manifest",
+      "type": "cli",
+      "description": "Manifest.llm.json emit / show — LLM introspection layer",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "emit",
+              "show"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe manifest <emit|show> [--root .]"
+      }
+    },
+    {
+      "name": "vibe refine",
+      "type": "cli",
+      "description": "Refine ticket (BƯỚC 8/8) — classify diff against v5 envelope",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "classify"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe refine classify [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe verify",
+      "type": "cli",
+      "description": "Adversarial QA gate — REQ-* coverage from blueprint matrix + verify report",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "coverage"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe verify coverage [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe anti-patterns",
+      "type": "cli",
+      "description": "Anti-pattern auditor — 12-pattern checklist + gate evaluation",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "list",
+              "check"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe anti-patterns <list|check> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe module",
+      "type": "cli",
+      "description": "Pattern F — add module to existing codebase (probe / plan)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "probe",
+              "plan"
+            ]
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "action"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe module <probe|plan> [args...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe context",
+      "type": "cli",
+      "description": "Dynamic context-block builder cho slash command",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "--command": {
+            "type": "string",
+            "description": "Slash command name (vd. 'vibe-vision')"
+          },
+          "--project-type": {
+            "type": "string",
+            "description": "Project type cho dynamic blocks (recommend_stack / RRI)"
+          },
+          "--persona": {
+            "type": "string",
+            "enum": [
+              "end_user",
+              "ba",
+              "qa",
+              "developer",
+              "operator"
+            ],
+            "description": "RRI persona filter"
+          },
+          "--mode-filter": {
+            "type": "string",
+            "enum": [
+              "CHALLENGE",
+              "GUIDED",
+              "EXPLORE"
+            ]
+          },
+          "--max-questions": {
+            "type": "integer",
+            "description": "Cap số câu RRI dynamic inject"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "--command"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe context --command <name> [--project-type ...] [--persona ...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe activate",
+      "type": "cli",
+      "description": "Test một file path against SKILL.md `paths:` globs (skill activation contract)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "path": {
+            "type": "string",
+            "description": "File path để test against SKILL.md paths globs"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        },
+        "required": [
+          "path"
+        ]
+      },
+      "invoke": {
+        "cli": "vibe activate <path> [--root .]"
+      }
+    },
+    {
+      "name": "vibe team",
+      "type": "cli",
+      "description": "Team memory mode (multi-developer shared context) — forwarded to vibecodekit.team_mode",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "team_argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Args forward verbatim sang `python -m vibecodekit.team_mode`"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      },
+      "invoke": {
+        "cli": "vibe team [team_argv...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe learn",
+      "type": "cli",
+      "description": "Capture learning vào .vibecode/learnings.jsonl (forwarded to vibecodekit.learnings)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "learn_argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Args forward verbatim sang `python -m vibecodekit.learnings`"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      },
+      "invoke": {
+        "cli": "vibe learn [learn_argv...] [--root .]"
+      }
+    },
+    {
+      "name": "vibe pipeline",
+      "type": "cli",
+      "description": "Master pipeline router — dispatch tới 1/3 VCK-HU pipeline (project / feature / code-sec)",
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "pipeline_argv": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Args forward verbatim sang `python -m vibecodekit.pipeline_router`"
+          },
+          "--root": {
+            "type": "string",
+            "default": "."
+          }
+        }
+      },
+      "invoke": {
+        "cli": "vibe pipeline [pipeline_argv...] [--root .]"
+      }
+    },
+    {
       "name": "/vibe-run",
       "type": "slash_command",
       "description": "Slash command — see .claude/commands/vibe-run.md",
