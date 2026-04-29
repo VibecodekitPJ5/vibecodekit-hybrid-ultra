@@ -1843,6 +1843,69 @@ def _probe_no_orphan_module(tmp: Path) -> Tuple[bool, str]:
     return True, f"all {n} modules wired (+ {len(allowlist)} allowlisted)"
 
 
+def _probe_vck_review_classifier_wired(tmp: Path) -> Tuple[bool, str]:
+    """#86 — ``/vck-review`` Security perspective references
+    ``security_classifier --scan-diff`` (v0.15.2 / Bug #2 invariant guard).
+
+    Closes the wiring gap from the v0.15.0 deep-dive audit: the Security
+    sub-agent must invoke the classifier's diff scan in addition to its
+    free-form interrogation of the diff.  Without this probe the wiring
+    could regress silently because no other gate inspects the markdown.
+    """
+    candidates = []
+    if os.environ.get("VIBECODE_UPDATE_PACKAGE"):
+        candidates.append(
+            Path(os.environ["VIBECODE_UPDATE_PACKAGE"]) / ".claude"
+            / "commands" / "vck-review.md")
+    candidates.append(
+        Path(__file__).resolve().parents[2] / "update-package" / ".claude"
+        / "commands" / "vck-review.md")
+    for skill in candidates:
+        if not skill.is_file():
+            continue
+        body = skill.read_text(encoding="utf-8")
+        if "security_classifier" not in body:
+            return False, ("vck-review.md does not reference "
+                           "vibecodekit.security_classifier")
+        if "--scan-diff" not in body:
+            return False, ("vck-review.md references security_classifier but "
+                           "does not invoke --scan-diff")
+        return True, ("vck-review.md Security perspective wired to "
+                      "security_classifier --scan-diff")
+    return False, "no vck-review.md found in any candidate root"
+
+
+def _probe_vck_cso_classifier_wired(tmp: Path) -> Tuple[bool, str]:
+    """#87 — ``/vck-cso`` regex pre-scan references
+    ``security_classifier --scan-paths`` (v0.15.2 / Bug #3 invariant guard).
+
+    The CSO audit's regex pre-scan phase must invoke the classifier on
+    a list of changed paths; this probe asserts the markdown skill
+    actually invokes the helper rather than just describing it.
+    """
+    candidates = []
+    if os.environ.get("VIBECODE_UPDATE_PACKAGE"):
+        candidates.append(
+            Path(os.environ["VIBECODE_UPDATE_PACKAGE"]) / ".claude"
+            / "commands" / "vck-cso.md")
+    candidates.append(
+        Path(__file__).resolve().parents[2] / "update-package" / ".claude"
+        / "commands" / "vck-cso.md")
+    for skill in candidates:
+        if not skill.is_file():
+            continue
+        body = skill.read_text(encoding="utf-8")
+        if "security_classifier" not in body:
+            return False, ("vck-cso.md does not reference "
+                           "vibecodekit.security_classifier")
+        if "--scan-paths" not in body:
+            return False, ("vck-cso.md references security_classifier but "
+                           "does not invoke --scan-paths")
+        return True, ("vck-cso.md regex pre-scan wired to "
+                      "security_classifier --scan-paths")
+    return False, "no vck-cso.md found in any candidate root"
+
+
 PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("01_async_generator_loop",         _probe_async_generator),
     ("02_derived_needs_follow_up",      _probe_derived_follow_up),
@@ -1943,6 +2006,9 @@ PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("84_vck_pipeline_command",         _probe_vck_pipeline_command),
     # v0.15.0 — invariant guard against re-introducing orphan modules
     ("85_no_orphan_module",             _probe_no_orphan_module),
+    # v0.15.2 — invariant guards for T4-completion (Bug #2 + #3)
+    ("86_vck_review_classifier_wired",  _probe_vck_review_classifier_wired),
+    ("87_vck_cso_classifier_wired",     _probe_vck_cso_classifier_wired),
 ]
 
 

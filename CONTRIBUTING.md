@@ -41,7 +41,7 @@ VIBECODE_UPDATE_PACKAGE="$(pwd)/update-package" \
 All PRs MUST pass:
 
 1. `pytest tests -q` — full suite, currently 473 passed / 0 skipped.
-2. `python -m vibecodekit.conformance_audit --threshold 1.0` — 85 / 85 probes.
+2. `python -m vibecodekit.conformance_audit --threshold 1.0` — 87 / 87 probes.
 3. `python tools/validate_release_matrix.py --skill . --update ./update-package` —
    L1 + L2 + L3 layouts pass.
 4. CI on the PR (`.github/workflows/ci.yml`) — green.
