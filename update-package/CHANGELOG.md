@@ -4,6 +4,55 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.16.0] — Final: cleanup of v0.15.4 audit P3 findings
+
+Green-risk final release closing the three remaining P3 findings (#8,
+#10, #12) from `docs/audits/v0.15.4-recheck.md`.  Promotes
+`0.16.0a0 → 0.16.0` (alpha → final); behaviour identical to the alpha
+plus the doc + test cleanups below.
+
+### Fixed
+
+* **P3 #8 — Slash-command count off-by-one.**  Live docs claimed
+  "41 slash commands total — 25 `/vibe-*` + 16 `/vck-*`".  Reality:
+  25 prefixed `/vibe-*` + 1 master `/vibe` + 16 `/vck-*` = **42**.
+  Updated phrasing across `update-package/CLAUDE.md`,
+  `update-package/README.md`, `update-package/QUICKSTART.md`,
+  `update-package/USAGE_GUIDE.md`, and the repo-root mirrors of
+  `QUICKSTART.md` + `USAGE_GUIDE.md`.  Also fixed a drive-by stale
+  count "15 `/vck-*`" in `README.md` (correct count is 16 since
+  v0.15.0).
+* **P3 #10 — `tests/test_end_to_end_install.py` lower-bound too
+  loose.**  Kept the public-API contract `total >= 53` as a forward-
+  compatible floor and added a tighter local regression guard
+  (`total >= 87`) so a silent loss of a probe is caught immediately.
+* **P3 #12 — `update-package/.claw/hooks/session_start.py` `_HERE` /
+  `here` duplication.**  The module-level `_HERE` and the lower
+  `here = os.path.dirname(...)` recomputed the same value.  Removed
+  the duplicate and routed both call sites through `_HERE`.
+
+### Changed
+
+* **Version bump** — `0.16.0a0 → 0.16.0` across `VERSION`,
+  `update-package/VERSION`, `pyproject.toml`, `manifest.llm.json`,
+  `assets/plugin-manifest.json`, `update-package/.claw.json`,
+  `SKILL.md` frontmatter, `vck-pipeline.md` frontmatter, and
+  `scripts/vibecodekit/__init__.py:_FALLBACK_VERSION`.  The
+  `update-package/CLAUDE.md` heading + `update-package/README.md`
+  title now reference v0.16.0.
+
+### Verification
+
+| Gate | Result |
+|---|---|
+| `pytest tests` | (see PR description) |
+| `conformance_audit --threshold 1.0` | 87 / 87 @ 100 % |
+| `validate_release_matrix.py` | PASS |
+
+This closes the audit tracked in #12; the audit doc (PR-2 was the
+last yellow-risk PR) can now be archived.
+
+
 ## [0.16.0a0] — Pre-release: router fixes + soft-orphan triage
 
 Yellow-risk pre-release closing the four P2 findings (#4 + #5 + #6 +

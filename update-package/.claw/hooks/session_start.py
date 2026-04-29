@@ -32,14 +32,15 @@ learnings_inject = {"injected": 0, "reason": "skipped", "items": []}
 
 # Resolve the vibecodekit Python package across known install layouts.
 # Order: explicit env override → ai-rules overlay → skill bundle dev → none.
+# (v0.16.0 — audit P3 #12: dedup with the module-level ``_HERE`` instead
+# of recomputing ``here = os.path.dirname(...)``.)
 repo = os.environ.get("CLAW_PROJECT_ROOT") or os.getcwd()
-here = os.path.dirname(os.path.abspath(__file__))
 _candidates = [
     os.environ.get("VIBECODEKIT_SKILL_PATH"),
     os.path.join(repo, "ai-rules", "vibecodekit", "scripts"),
-    os.path.join(here, "..", "..", "..", "skill",
+    os.path.join(_HERE, "..", "..", "..", "skill",
                   "vibecodekit-hybrid-ultra", "scripts"),
-    os.path.join(here, "..", "..", "ai-rules",
+    os.path.join(_HERE, "..", "..", "ai-rules",
                   "vibecodekit", "scripts"),
 ]
 for _cand in _candidates:

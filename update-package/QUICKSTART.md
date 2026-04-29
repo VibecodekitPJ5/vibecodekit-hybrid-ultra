@@ -82,7 +82,7 @@ codex --system-file ai-rules/vibecodekit/SKILL.md "/vibe-scan"
 # Hoặc chuyển sang `.cursor/rules/` bằng script nhỏ, xem USAGE_GUIDE §2.2
 ```
 
-Bạn sẽ thấy ngay 41 slash command mới (25 `/vibe-*` + 16 `/vck-*`): `/vibe-scan`, `/vibe-scaffold`, `/vibe-ship`,
+Bạn sẽ thấy ngay 42 slash command mới (25 `/vibe-*` + 1 master `/vibe` + 16 `/vck-*`): `/vibe-scan`, `/vibe-scaffold`, `/vibe-ship`,
 `/vibe-blueprint`, ..., `/vibe-audit`.
 
 ---

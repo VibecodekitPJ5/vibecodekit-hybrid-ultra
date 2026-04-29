@@ -1,9 +1,9 @@
-# claw-code-pack (VibecodeKit Hybrid Ultra v0.15.4)
+# claw-code-pack (VibecodeKit Hybrid Ultra v0.16.0)
 
 Drop-in overlay for projects that use `claw-code` / Claude Code / Codex.
 After extracting into your project root you'll have:
 
-- `.claude/commands/` — **41 slash commands** at v0.15.4: 25 `/vibe-*`
+- `.claude/commands/` — **42 slash commands** at v0.16.0: 25 `/vibe-*` + 1 master `/vibe`
   (`/vibe`, `/vibe-scaffold`, `/vibe-ship`, `/vibe-run`, `/vibe-doctor`,
   `/vibe-subagent`, `/vibe-memory`, `/vibe-approval`, `/vibe-task`,
   `/vibe-scan`, `/vibe-vision`, `/vibe-rri`, `/vibe-rri-t`, `/vibe-rri-ux`,
