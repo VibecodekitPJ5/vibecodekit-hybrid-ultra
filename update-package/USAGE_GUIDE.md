@@ -149,7 +149,7 @@ Là "overlay" cho các CLI dùng `.claude/` hoặc `.claw/` convention:
 
 ```
 .claude/
-├── commands/       # 41 slash commands (25 `/vibe-*` + 16 `/vck-*`)
+├── commands/       # 42 slash commands (25 `/vibe-*` + 1 master `/vibe` + 16 `/vck-*`)
 ├── agents/         # 5 agent cards (coordinator, scout, builder, qa, security)
 ├── hooks/          # 4 hook lifecycle scripts
 └── ...
@@ -1137,7 +1137,7 @@ python -m vibecodekit.cli task start my-plan.json
 
 Bản v0.11.0 BIG-UPDATE (historical) tích hợp 6 strengths của
 [`taw-kit`](https://github.com/VagabondKingsman/taw-kit) thành layer
-mới trên VibecodeKit, **tất cả** 41 slash command + 87/87
+mới trên VibecodeKit, **tất cả** 42 slash command + 87/87
 conformance audit.  Phân theo 3 phase ship: **α** (v0.10.7), **β**
 (v0.10.8), **final** (v0.11.0).
 

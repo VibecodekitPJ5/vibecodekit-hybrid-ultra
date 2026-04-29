@@ -110,15 +110,22 @@ def test_audit_from_fresh_install(fresh_root):
     r_install = _run_cli(["install", str(fresh_root)], cwd=fresh_root)
     assert r_install.returncode == 0, r_install.stderr
     # 3. Now audit end-to-end at threshold 1.0 — expect ≥ 53/53 probes
-    #    (the assertion below uses ``>= 53`` so newer releases that add probes
-    #    still pass; v0.15.4 ships 87/87).
+    #    (the ``>= 53`` assertion is the public-API contract and stays
+    #    forever so newer releases that *add* probes still pass).  We
+    #    also pin a tighter local lower bound so a silent loss of a
+    #    probe is caught — bump this together with new probe additions
+    #    (v0.16.0 ships 87 probes; audit P3 #10).
     env = {"VIBECODE_UPDATE_PACKAGE": str(update_pkg)}
     r = _run_cli(["audit", "--threshold", "1.0"], cwd=fresh_root, env=env)
     assert r.returncode == 0, r.stderr
     out = json.loads(r.stdout)
     assert out["parity"] == 1.0, out
     assert out["total"] == out["passed"], out
-    assert out["total"] >= 53
+    assert out["total"] >= 53, "public-API contract: at least 53 probes"
+    assert out["total"] >= 87, (
+        f"regression guard: v0.16.0 ships 87 probes, got {out['total']}; "
+        f"if you intentionally removed a probe, bump this lower bound."
+    )
 
 
 def test_sample_plan_end_to_end(fresh_root):

@@ -59,7 +59,7 @@ ETHOS adaptation.
 | `learnings` | ✓ via `session_start` hook (auto-inject 10 latest, PR-B) + `/vck-learn` + `/vck-retro` | always on; opt-out `VIBECODE_LEARNINGS_INJECT=0` |
 | `team_mode` + `session_ledger` | ✓ via `/vck-ship` Bước 0 (gate enforcement) | `python -m vibecodekit.team_mode init …` |
 | browser daemon | ✓ via `/vck-qa` skill | `pip install -e ".[browser]"` |
-| 15 `/vck-*` slash commands | ✓ via manifest + intent_router | type `/vck-<name>` in host |
+| 16 `/vck-*` slash commands | ✓ via manifest + intent_router | type `/vck-<name>` in host |
 | GitHub Actions CI | ✓ on every PR/push (3.9 / 3.11 / 3.12) | always on |
 
 Full walkthrough: [`USAGE_GUIDE.md` §18](USAGE_GUIDE.md#18-activation-cheat-sheet--gstack-port-modules-v0120v0150).

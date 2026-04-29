@@ -1,11 +1,11 @@
-# Project overlay — VibecodeKit Hybrid Ultra v0.15.4
+# Project overlay — VibecodeKit Hybrid Ultra v0.16.0
 
-This project uses the VibecodeKit **v0.15.4** overlay (canonical version
+This project uses the VibecodeKit **v0.16.0** overlay (canonical version
 file: `VERSION`).  All tool calls pass through the 6-layer permission
 pipeline; see
 `ai-rules/vibecodekit/references/10-permission-classification.md`.
 
-## Quick commands (41 slash commands total — 25 `/vibe-*` + 16 `/vck-*`)
+## Quick commands (42 slash commands total — 25 `/vibe-*` + 1 master `/vibe` + 16 `/vck-*`)
 
 The canonical inventory lives in `manifest.llm.json`; this file lists
 the most-used subset for context.
