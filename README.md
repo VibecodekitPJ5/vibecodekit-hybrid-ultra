@@ -11,6 +11,18 @@
 > **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
 > attribution manifest [`LICENSE-third-party.md`](LICENSE-third-party.md).
 
+## Quick demo (< 2 seconds, zero network)
+
+```bash
+git clone https://github.com/VibecodekitPJ3/vibecodekit-hybrid-ultra.git
+cd vibecodekit-hybrid-ultra
+PYTHONPATH=./scripts python -m vibecodekit.cli demo
+```
+
+Runs 6 steps offline: doctor health-check, permission engine (classify 5
+commands), conformance audit (87 probes), scaffold preview, intent router,
+and MCP selfcheck.  See [`examples/`](examples/) for standalone scripts.
+
 ## Skills inspired by gstack
 
 v0.15.0 closes the **One Pipeline, Zero Dead-Code** rollout:
