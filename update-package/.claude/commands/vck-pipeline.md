@@ -5,7 +5,7 @@ version: 0.15.0
 allowed-tools: [Bash, Read]
 agent: coordinator
 inspired-by: ../vibe.md
-license: MIT
+license: MIT (adapted)
 ---
 
 # /vck-pipeline
@@ -85,3 +85,10 @@ commands.
 - `docs/INTEGRATION-PLAN-v0.15.md` §3 — master plan (T6)
 - `update-package/.claude/commands/vibe.md` — analog router (`/vibe`)
 - `scripts/vibecodekit/pipeline_router.py` — runtime backing this command
+
+---
+
+Adapted from VibecodeKit's `/vibe` master router (clean-room
+rewrite, no upstream code copied).  Scoped specifically to the three
+VCK-HU pipelines that ship in v0.15.0.  Xem
+`LICENSE-third-party.md`.

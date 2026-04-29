@@ -28,7 +28,23 @@ def test_command_markdown_ships(name: str) -> None:
     body = p.read_text(encoding="utf-8")
     assert body.startswith("---\n"), f"{name} missing frontmatter"
     assert f"name: {name}" in body
+    # CONTRIBUTING.md mandates `inspired-by:` + `license: MIT (adapted)`
+    # for adapted commands, plus an attribution paragraph at the bottom.
+    # See PR #8 Devin Review findings 2 + 3.
     assert "inspired-by:" in body
+    assert "license: MIT (adapted)" in body, (
+        f"{name}.md must use 'license: MIT (adapted)' per CONTRIBUTING.md")
+    # Attribution paragraph: a final `---` separator followed by free
+    # prose is the convention used by the v0.12 / v0.14 commands.
+    tail = body.rsplit("---", 1)[-1].strip()
+    assert tail, f"{name}.md missing attribution paragraph at the bottom"
+    # Cheap sanity: the attribution paragraph should mention either the
+    # upstream project or the license file.
+    assert (
+        "LICENSE-third-party.md" in tail
+        or "VibecodeKit" in tail
+        or "gstack" in tail
+    ), f"{name}.md attribution paragraph is too vague"
 
 
 def test_manifest_lists_all_v015_commands() -> None:
