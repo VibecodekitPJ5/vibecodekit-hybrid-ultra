@@ -7,6 +7,9 @@
   ],
   "no_orphan_module": {
     "vn_faker": "Faker-style generator for Vietnamese test data; consumed only by tests + downstream demos.",
-    "vn_error_translator": "VN-localised error message helper; consumed only by tests + downstream demos."
+    "vn_error_translator": "VN-localised error message helper; consumed only by tests + downstream demos.",
+    "quality_gate": "RRI-T 7\u00d78 + RRI-UX 7\u00d78 quality gate evaluator; public Python API consumed by /vibe-complete reports and downstream projects (audit P2 #6, v0.16.0-\u03b1).",
+    "tool_use_parser": "Tolerant parser for ad-hoc tool-use JSON in LLM responses; public Python API consumed by orchestrators that don't go through query_loop (audit P2 #6, v0.16.0-\u03b1).",
+    "worktree_executor": "Worktree fork primitive (Pattern #8 isolation); public Python API consumed by background-task runners and downstream projects (audit P2 #6, v0.16.0-\u03b1)."
   }
 }

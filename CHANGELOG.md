@@ -4,6 +4,78 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.16.0a0] — Pre-release: router fixes + soft-orphan triage
+
+Yellow-risk pre-release closing the four P2 findings (#4 + #5 + #6 +
+#7) and the trigger-precedence P3 finding (#9) from
+`docs/audits/v0.15.4-recheck.md`.  Per-finding decisions captured
+verbatim in `tests/test_audit_probe_85_no_orphan.py` and the new
+`tests/test_v016_alpha_router_fixes.py`.
+
+### Fixed
+
+* **P2 #4 — `/vck-pipeline` master router missed its own documented
+  triggers.**  Added a `triggers:` block to the skill's frontmatter
+  (`update-package/.claude/commands/vck-pipeline.md`), extended the
+  `intent_router` `VCK_PIPELINE` keyword bank, and registered the
+  same phrases (plus EN equivalents from #9) inside
+  `pipeline_router.PIPELINES`.  The 3 routers now agree on a single
+  canonical phrase bank for "go through the whole pipeline".
+* **P2 #5 — `intent_router.classify("review my code for security")`
+  mis-routed to `/vibe-scan`.**  Added multi-token phrases to
+  `VCK_REVIEW` (`"review my code"`, `"review my code for security"`,
+  `"review the code"`, `"code review"`, `"review code"`) and
+  `VCK_CSO` (`"audit my code"`, `"audit code for security"`,
+  `"security audit"`, `"security review"`).  The longest-match
+  tiebreaker in `IntentRouter.classify` lands these on the right
+  bucket; `SCAN`'s overlapping `"code review"`/`"review code"`
+  phrases were retired (they belonged to the review skills, not the
+  needs-discovery skill).
+* **P2 #6 + #7 — 4 soft-orphan modules pinned only by
+  `tests/test_orphan_module_smoke.py`.**  Per the operator decision:
+  * `auto_commit_hook` was wired into
+    `update-package/.claw/hooks/post_tool_use.py` (option (a) —
+    explicit production call site driven by the `VIBECODE_AUTOCOMMIT`
+    env var).  This closes the doc-promise gap from
+    `USAGE_GUIDE.md §16.5` and lets the no-orphan probe (#85) find
+    the module without the test pin.
+  * `quality_gate`, `tool_use_parser`, `worktree_executor` were
+    allowlisted in `scripts/vibecodekit/_audit_allowlist.json` with
+    substantive justifications (option (b) — public Python API
+    surface consumed by downstream projects + reports).
+* **P3 #9 — `pipeline_router` keyword bank missed EN equivalents.**
+  Added `"build the whole thing"`, `"set everything up"` to
+  Pipeline A; `"full check"`, `"all gates"`, `"end to end"`,
+  `"e2e check"`, `"go through pipeline"`, `"pipeline đầy đủ"`,
+  `"pipeline day du"` to Pipeline B.
+
+### Changed
+
+* **USAGE_GUIDE.md §16.5** (and `update-package/USAGE_GUIDE.md`
+  mirror) — replaced the fictional `AutoCommitHook.guard()` /
+  `maybe_commit()` API example with the real public surface
+  (`SensitiveFileGuard.check()` + `AutoCommitHook.commit()` +
+  `Decision`).  Added a sentence pointing operators at the new
+  `post_tool_use.py` wiring + the `VIBECODE_AUTOCOMMIT=1` opt-in.
+* **Version bump** — `0.15.5 → 0.16.0a0` across `VERSION`,
+  `update-package/VERSION`, `pyproject.toml`, `manifest.llm.json`,
+  `assets/plugin-manifest.json`, `update-package/.claw.json`,
+  `SKILL.md` frontmatter, and `vck-pipeline.md` frontmatter.
+
+### Verification
+
+| Gate | Result |
+|---|---|
+| `pytest tests` | (see PR description) |
+| `conformance_audit --threshold 1.0` | 87 / 87 @ 100 % |
+| `validate_release_matrix.py` | PASS |
+
+`auto_commit_hook` is no longer in the allowlist — its production
+call site is the `post_tool_use` hook, fully covered by the
+no-orphan probe (#85).
+
+P3 #8 + #10 + #12 are deferred to PR-3 (v0.16.0 cleanup).
+
 ## [0.15.5] — Green hotfix: stale runtime version constants + egg-info guard
 
 Patch release closing the three P1 runtime-version-constant findings and

@@ -1584,17 +1584,23 @@ AKIA[0-9A-Z]{16}    sk-[A-Za-z0-9]{20,}    ghp_…    AIza…
 **Python API**
 
 ```python
-from vibecodekit.auto_commit_hook import AutoCommitHook
-hook = AutoCommitHook(repo_dir=".", debounce_s=60)
+from pathlib import Path
+from vibecodekit.auto_commit_hook import AutoCommitHook, SensitiveFileGuard
 
-# Pre-write guard (gọi từ hook_interceptor)
-decision = hook.guard("config/.env", new_content="DB_PASS=…")
-if decision.blocked:
-    print(decision.reason)        # "sensitive file pattern: .env"
+# Pre-write guard (gọi từ bất kỳ hook nào write file).
+# Raises PermissionError nếu path / content match patterns nhạy cảm.
+guard = SensitiveFileGuard()
+try:
+    guard.check("config/.env", content="DB_PASS=…")
+except PermissionError as exc:
+    print(exc)  # "sensitive file refused by SensitiveFileGuard: config/.env"
 
-# Post-write commit (debounced)
-result = hook.maybe_commit(["src/foo.py", "src/bar.py"])
-print(result.committed, result.sha)
+# Post-write commit (debounced).  V0.16.0-α: wired into
+# update-package/.claw/hooks/post_tool_use.py — set
+# VIBECODE_AUTOCOMMIT=1 to enable it from the hook context.
+hook = AutoCommitHook(debounce_s=60)
+decision = hook.commit(Path("."), message="after Edit")
+print(decision.commit, decision.reason, decision.files)
 ```
 
 **Filter commits dễ**

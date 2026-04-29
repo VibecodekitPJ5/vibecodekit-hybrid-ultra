@@ -231,8 +231,15 @@ import json as _json
 
 
 def _load_version_strict() -> str:
+    """Match the canonical 4-segment VibecodeKit version *or* a PEP 440
+    pre-release suffix (``aN`` / ``bN`` / ``rcN``), as used by
+    v0.16.0-alpha (`0.16.0a0`) etc.  Anything richer than this (epochs,
+    local segments) is rejected so we still catch typos."""
     ver = (SKILL_ROOT / "VERSION").read_text(encoding="utf-8").strip()
-    assert re.fullmatch(r"\d+\.\d+\.\d+(?:\.\d+)?", ver), f"bad VERSION: {ver!r}"
+    assert re.fullmatch(
+        r"\d+\.\d+\.\d+(?:\.\d+)?(?:(?:a|b|rc)\d+)?",
+        ver,
+    ), f"bad VERSION: {ver!r}"
     return ver
 
 

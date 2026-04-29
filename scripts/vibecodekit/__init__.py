@@ -29,7 +29,7 @@ from __future__ import annotations
 import os as _os
 from pathlib import Path as _Path
 
-_FALLBACK_VERSION = "0.15.5"
+_FALLBACK_VERSION = "0.16.0a0"
 
 
 def _resolve_version() -> str:

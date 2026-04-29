@@ -45,12 +45,23 @@ def test_audit_allowlist_json_is_valid() -> None:
             f"allowlist {k!r} needs a substantive justification")
 
 
-def test_audit_allowlist_only_contains_q5b_approved_entries() -> None:
-    """User answer Q5(b) on the integration plan: only allowlist
-    vn_faker + vn_error_translator (test utilities)."""
+def test_audit_allowlist_only_contains_approved_entries() -> None:
+    """The allowlist is bounded — adding entries requires a v-bump and a
+    documented decision.  Currently approved set:
+
+    * v0.15.0 / Q5(b) — ``vn_faker`` + ``vn_error_translator`` (test
+      utilities consumed only by tests + downstream demos).
+    * v0.16.0-\u03b1 / audit P2 #6 — ``quality_gate`` + ``tool_use_parser``
+      + ``worktree_executor`` (genuine public Python API; the operator
+      chose option (b) allowlist for these three and option (a) wire-
+      properly for ``auto_commit_hook``).
+    """
     blob = json.loads((PKG / "_audit_allowlist.json").read_text(
         encoding="utf-8"))
-    expected = {"vn_faker", "vn_error_translator"}
+    expected = {
+        "vn_faker", "vn_error_translator",
+        "quality_gate", "tool_use_parser", "worktree_executor",
+    }
     assert set(blob["no_orphan_module"].keys()) == expected
 
 

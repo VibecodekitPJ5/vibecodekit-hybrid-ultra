@@ -83,6 +83,8 @@ PIPELINES: Tuple[Pipeline, ...] = (
             "new project", "scaffold", "bootstrap", "start project",
             "create project", "initialize", "init project",
             "kick off", "greenfield", "from scratch",
+            # v0.16.0-α — P3 #9 EN equivalents that bias toward A.
+            "build the whole thing", "set everything up",
             # Vietnamese
             "dự án mới", "du an moi", "tạo dự án", "tao du an",
             "khởi tạo", "khoi tao", "bắt đầu dự án", "bat dau du an",
@@ -105,6 +107,11 @@ PIPELINES: Tuple[Pipeline, ...] = (
             "add feature", "implement feature", "new feature",
             "build feature", "ship feature", "fix bug",
             "patch", "update", "improve",
+            # v0.16.0-α — P2 #4 + P3 #9 "go-through-the-whole-pipeline"
+            # phrases.  Routed to FEATURE DEV per audit recommendation
+            # (the "checked-everything" feel maps to /vibe-run → /vck-ship).
+            "full check", "all gates", "end to end", "e2e check",
+            "go through pipeline", "pipeline đầy đủ", "pipeline day du",
             # Vietnamese
             "tính năng mới", "tinh nang moi",
             "thêm tính năng", "them tinh nang",

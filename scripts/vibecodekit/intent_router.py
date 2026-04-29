@@ -45,12 +45,14 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "scan", "phân tích nhu cầu", "phan tich nhu cau",
         "matrix nhu cầu", "derive needs", "user needs",
         "khám phá", "kham pha",
-        # Security / code-review scans — high-specificity phrases must
-        # outrank generic "kiểm tra"/"review" (which fall to VERIFY).
+        # Generic security-discovery phrases.  Note: review-oriented
+        # phrases ("code review", "review code", "review my code")
+        # were moved to VCK_REVIEW + VCK_CSO in v0.16.0-α (audit P2 #5)
+        # so prose like "review my code for security" lands on the
+        # multi-perspective adversarial review skill instead of SCAN.
         "bảo mật", "bao mat", "security",
         "kiểm tra bảo mật", "kiem tra bao mat",
-        "security scan", "security audit",
-        "code review", "review code",
+        "security scan",
     )),
     ("VISION", (
         "vision", "tầm nhìn", "tam nhin",
@@ -181,11 +183,23 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "/vck-cso", "vck-cso", "chief security officer",
         "owasp top 10", "owasp top10", "stride threat model",
         "supply chain audit", "secrets archaeology",
+        # v0.16.0-α — P2 #5 multi-token boost.  Phrases longer than
+        # SCAN's "security" (8 chars) so the longest-match tiebreaker
+        # in :meth:`IntentRouter.classify` lands the right bucket for
+        # natural prose like "audit my code for security".
+        "audit my code", "audit code for security",
+        "security audit", "security review",
     )),
     ("VCK_REVIEW", (
         "/vck-review", "vck-review", "adversarial review",
         "review army", "multi-specialist review",
         "7-perspective review", "pre-pr review",
+        # v0.16.0-α — P2 #5 multi-token boost.  Without these phrases,
+        # "review my code for security" mis-routes to /vibe-scan because
+        # SCAN's "security" trigger fires alone.
+        "code review", "review code",
+        "review my code", "review the code",
+        "review my code for security",
     )),
     ("VCK_QA", (
         "/vck-qa", "vck-qa", "/vck-qa-only", "vck-qa-only",
@@ -257,6 +271,12 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "/vck-pipeline", "vck-pipeline",
         "pipeline router", "master pipeline",
         "vck pipeline", "chọn pipeline", "chon pipeline",
+        # v0.16.0-α — Plan T6 trigger phrases (audit P2 #4 + P3 #9)
+        # so /vck-pipeline frontmatter, intent_router, and
+        # pipeline_router agree on a single canonical bank.
+        "pipeline đầy đủ", "pipeline day du",
+        "full check", "go through pipeline",
+        "all gates", "end to end", "e2e check",
     )),
 )
 

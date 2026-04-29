@@ -1,11 +1,24 @@
 ---
 name: vck-pipeline
 description: Master router — type free-form prose to dispatch to one of the 3 VCK-HU pipelines (A. PROJECT CREATION / B. FEATURE DEV / C. CODE & SECURITY)
-version: 0.15.5
+version: 0.16.0a0
 allowed-tools: [Bash, Read]
 agent: coordinator
 inspired-by: ../vibe.md
 license: MIT (adapted)
+triggers:
+  # Plan T6 phrases (mandated by docs/INTEGRATION-PLAN-v0.15.md §3).
+  - "pipeline"
+  - "đầy đủ"
+  - "day du"
+  - "full check"
+  - "go through pipeline"
+  # v0.16.0-α — P3 #9 EN equivalents (audit recommendation).
+  - "all gates"
+  - "end to end"
+  - "e2e check"
+  - "build the whole thing"
+  - "set everything up"
 ---
 
 # /vck-pipeline
