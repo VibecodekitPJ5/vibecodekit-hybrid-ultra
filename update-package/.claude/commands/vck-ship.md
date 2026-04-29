@@ -98,12 +98,14 @@ python -m vibecodekit.team_mode clear
 
 | Bước fail | Action |
 |---|---|
+| 0 (team-mode preflight) | Exit 2 = `TeamGateViolation`. STOP, in danh sách gate còn thiếu (ví dụ `/vck-review` chưa chạy), hướng dẫn user chạy gate đó rồi rerun `/vck-ship`. No-op (exit 0) khi repo không có `.vibecode/team.json`. |
 | 1 (preflight) | STOP, hướng dẫn user clean state |
 | 2 (test) | STOP, show test output, gợi ý `/vck-investigate` |
 | 3 (review) | RED → STOP. YELLOW → ask. |
 | 4 (qa) | STOP, show /vck-qa report |
 | 5 (push) | Nếu remote rejected (protected branch) → suggest tạo branch mới |
 | 6 (PR) | Nếu API fail → save commit local, hướng dẫn user tạo PR thủ công |
+| 7 (clear ledger) | Non-blocking: PR đã mở thành công ở Bước 6 nên không cần STOP. Nếu `team_mode clear` báo OSError (permission/disk) → log warning + chạy lại bằng tay `python -m vibecodekit.team_mode clear` trước cycle ship kế tiếp. |
 
 ## Output
 

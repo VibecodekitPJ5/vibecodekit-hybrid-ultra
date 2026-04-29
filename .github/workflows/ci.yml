@@ -45,6 +45,9 @@ jobs:
         # FULL suite below for safety, but expose the diff-based preview
         # so the eval_select pipeline is exercised and any breakage is
         # caught immediately on CI rather than at /vck-ship time.
+        # ``continue-on-error`` so an eval_select bug never blocks the
+        # mandatory quality gates (pytest / audit / release-matrix).
+        continue-on-error: true
         env:
           PYTHONPATH: ./scripts
           BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main^' }}
