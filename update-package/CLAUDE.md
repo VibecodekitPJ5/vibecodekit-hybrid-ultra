@@ -117,6 +117,22 @@ Gate FAILs on any missing key.  Canonical keys in
 Bundled sample server: `python -m vibecodekit.mcp_servers.selfcheck`
 (tools: `ping`, `echo`, `now`).
 
+## Version — single source of truth
+
+Only `VERSION` (repo root) is authoritative.  All other surfaces are
+mirrors validated by `tests/test_docs_count_sync.py`.  Bumping version:
+
+```bash
+echo "0.17.0" > VERSION
+python tools/sync_version.py          # writes to all 7 mirror surfaces
+pytest tests/test_docs_count_sync.py  # verify mirrors agree
+```
+
+Mirror surfaces: `update-package/VERSION`, `pyproject.toml`,
+`manifest.llm.json`, `assets/plugin-manifest.json`,
+`update-package/.claw.json`, `SKILL.md` frontmatter,
+`update-package/.claude/commands/vck-pipeline.md` frontmatter.
+
 ## Release gate
 
 Before shipping:

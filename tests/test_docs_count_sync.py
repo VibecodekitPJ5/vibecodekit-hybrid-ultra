@@ -228,6 +228,31 @@ def test_changelog_top_section_is_current() -> None:
 # bundle like the v0.11.3 → v0.11.3.1 drift the reviewer caught.
 
 import json as _json
+import tomllib as _tomllib
+
+
+def _extract_pyproject_version(p: Path) -> str:
+    with open(p, "rb") as f:
+        data = _tomllib.load(f)
+    return data["project"]["version"]
+
+
+def _extract_yaml_frontmatter_version(p: Path) -> str:
+    """Extract ``version:`` from YAML frontmatter (between ``---`` fences)."""
+    text = p.read_text(encoding="utf-8")
+    in_fm = False
+    for line in text.splitlines():
+        if line.strip() == "---":
+            if not in_fm:
+                in_fm = True
+                continue
+            else:
+                break
+        if in_fm:
+            m = re.match(r"^version:\s*(.+)$", line)
+            if m:
+                return m.group(1).strip()
+    return "<missing>"
 
 
 def _load_version_strict() -> str:
@@ -254,6 +279,12 @@ _METADATA_VERSION_SOURCES = [
     ("skill/manifest.llm.json#version",
      SKILL_ROOT / "manifest.llm.json",
      lambda p: _json.loads(p.read_text(encoding="utf-8")).get("version", "<missing>")),
+    ("skill/pyproject.toml#project.version",
+     SKILL_ROOT / "pyproject.toml",
+     _extract_pyproject_version),
+    ("skill/SKILL.md#frontmatter.version",
+     SKILL_ROOT / "SKILL.md",
+     _extract_yaml_frontmatter_version),
 ]
 # Pull in update-package metadata too if the package can be located.
 for _up in _candidate_update_roots():
@@ -265,6 +296,13 @@ for _up in _candidate_update_roots():
          _up / ".claw.json",
          lambda p: _json.loads(p.read_text(encoding="utf-8"))["version"]),
     ])
+    _vck_pipeline = _up / ".claude" / "commands" / "vck-pipeline.md"
+    if _vck_pipeline.is_file():
+        _METADATA_VERSION_SOURCES.append((
+            f"{_up.name}/.claude/commands/vck-pipeline.md#frontmatter.version",
+            _vck_pipeline,
+            _extract_yaml_frontmatter_version,
+        ))
 
 
 @pytest.mark.parametrize("label,path,extractor",
@@ -278,3 +316,21 @@ def test_metadata_version_matches_canonical(label: str, path: Path, extractor) -
     assert got == canonical, (
         f"{label} reports {got!r} but canonical skill/VERSION is {canonical!r}"
         )
+
+
+def test_runtime_version_matches_canonical_VERSION_file() -> None:
+    """The importable ``vibecodekit.VERSION`` must match the repo's
+    ``VERSION`` file.  Catches stale ``_FALLBACK_VERSION`` regressions."""
+    canonical = (SKILL_ROOT / "VERSION").read_text(encoding="utf-8").strip()
+    import importlib, sys
+    # Ensure a fresh import if already cached.
+    mod_name = "vibecodekit"
+    if mod_name in sys.modules:
+        importlib.reload(sys.modules[mod_name])
+    else:
+        importlib.import_module(mod_name)
+    runtime_version = sys.modules[mod_name].VERSION
+    assert runtime_version == canonical, (
+        f"vibecodekit.VERSION is {runtime_version!r} but "
+        f"canonical VERSION file says {canonical!r}"
+    )
