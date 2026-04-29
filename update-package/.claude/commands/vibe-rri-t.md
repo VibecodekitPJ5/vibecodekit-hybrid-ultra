@@ -3,6 +3,13 @@ description: Open RRI-T (testing) template + 5×7×8 methodology
 version: 0.11.3
 allowed-tools: [Bash, Read]
 wired_refs: [ref-31]
+deprecated: true
+replaced-by: /vibe-rri
+removal-target: v1.0.0
+deprecation-note: |
+  /vibe-rri canonical đã cover testing axis qua mode CHALLENGE/GUIDED
+  /EXPLORE.  Variant riêng /vibe-rri-t sẽ remove ở v1.0.0; giữ
+  hiện tại để backward-compat session cũ invoke.
 ---
 
 # /vibe-rri-t — RRI for Testing (Q→A→R→P→T)

@@ -3,6 +3,13 @@ description: Open RRI-UX critique template + flow-physics methodology
 version: 0.11.3
 allowed-tools: [Bash, Read]
 wired_refs: [ref-22, ref-32]
+deprecated: true
+replaced-by: /vibe-rri
+removal-target: v1.0.0
+deprecation-note: |
+  /vibe-rri canonical đã cover UX axis qua mode CHALLENGE.  Variant
+  riêng /vibe-rri-ux sẽ remove ở v1.0.0; giữ hiện tại để backward-
+  compat session cũ.
 ---
 
 # /vibe-rri-ux — UX Critique (S→V→P→F→I)

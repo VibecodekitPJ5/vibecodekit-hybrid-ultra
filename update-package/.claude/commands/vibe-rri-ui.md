@@ -3,6 +3,13 @@ description: UI design via combined RRI-UX + RRI-T methodology
 version: 0.11.3
 allowed-tools: [Bash, Read]
 wired_refs: [ref-22, ref-33, ref-34]
+deprecated: true
+replaced-by: /vibe-rri
+removal-target: v1.0.0
+deprecation-note: |
+  /vibe-rri canonical đã cover UI axis qua mode GUIDED + dùng prompt
+  phụ "design pipeline".  Variant riêng /vibe-rri-ui sẽ remove ở
+  v1.0.0; giữ hiện tại để backward-compat.
 ---
 
 # /vibe-rri-ui — UI design combining UX + Testing

@@ -2,6 +2,15 @@
 description: Deploy to one of 7 targets (Vercel, Docker, VPS, Cloudflare, Railway, Fly, Render)
 version: 0.11.2
 allowed-tools: [Bash, Read]
+deprecated: true
+replaced-by: /vck-ship
+removal-target: v1.0.0
+deprecation-note: |
+  /vck-ship hiện là canonical: bao trọn deploy + test → review → commit
+  → push → PR (atomic, gate-driven), trong khi /vibe-ship chỉ lo
+  deploy.  Giữ file này để backward-compat; các session cũ đang
+  invoke /vibe-ship vẫn chạy. KHI bạn viết prompt mới, dùng
+  /vck-ship.  Sẽ remove hẳn ở v1.0.0.
 ---
 
 # /vibe-ship
