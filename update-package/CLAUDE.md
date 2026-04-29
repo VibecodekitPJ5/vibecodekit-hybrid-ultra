@@ -1,10 +1,14 @@
-# Project overlay — VibecodeKit Hybrid Ultra v0.11.4.1
+# Project overlay — VibecodeKit Hybrid Ultra v0.15.4
 
-This project uses the VibecodeKit **v0.11.4.1** overlay.  All tool calls pass
-through the 6-layer permission pipeline; see
+This project uses the VibecodeKit **v0.15.4** overlay (canonical version
+file: `VERSION`).  All tool calls pass through the 6-layer permission
+pipeline; see
 `ai-rules/vibecodekit/references/10-permission-classification.md`.
 
-## Quick commands (26 slash commands total)
+## Quick commands (41 slash commands total — 25 `/vibe-*` + 16 `/vck-*`)
+
+The canonical inventory lives in `manifest.llm.json`; this file lists
+the most-used subset for context.
 
 ### Lifecycle
 - `/vibe-scan`         — scan repo + docs (step 1)
@@ -32,7 +36,7 @@ through the 6-layer permission pipeline; see
 - `/vibe-compact [--reactive]` — 5-layer compaction
 - `/vibe-doctor`       — health check
 - `/vibe-dashboard`    — runtime event summary
-- `/vibe-audit`        — **53-probe** conformance audit (@100 % parity)
+- `/vibe-audit`        — **87-probe** conformance audit (@100 % parity)
 - `/vibe-install <dst>` — install overlay into another project
 
 CLI-only commands (no slash form):
@@ -113,10 +117,12 @@ Bundled sample server: `python -m vibecodekit.mcp_servers.selfcheck`
 ## Release gate
 
 Before shipping:
-1. `pytest tests/ -q` → 526/526 pass (full suite, run từ repo root).
-   Bundled `tests/` trong zip chỉ là subset 17 đại diện; đủ để smoke-test
-   sau khi unzip nhưng CI gate là trên full suite.
-2. `/vibe-audit` → 53/53 probes @ 100 %
+1. `pytest tests/ -q` → 500/500 pass at v0.15.4 (full suite, run từ repo
+   root; the canonical count is whatever `pytest --collect-only -q | tail`
+   reports for the current commit).  Bundled `tests/` trong zip chỉ là
+   subset đại diện; đủ để smoke-test sau khi unzip nhưng CI gate là trên
+   full suite.
+2. `/vibe-audit` → 87/87 probes @ 100 %
 3. `/vibe-rri-t` → all 7 dims ≥ 70 %, ≥ 5/7 @ ≥ 85 %, 0 P0 FAIL
 4. `/vibe-rri-ux` → same structure on Flow Physics
 5. `/vibe-vn-check` → gate PASS (12/12) if VN scope

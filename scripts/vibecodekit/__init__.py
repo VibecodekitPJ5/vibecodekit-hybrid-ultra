@@ -1,4 +1,4 @@
-"""VibecodeKit Hybrid Ultra v0.11.4.1 — Full Agentic OS Runtime + Methodology Overlay.
+"""VibecodeKit Hybrid Ultra v0.15.4 — Full Agentic OS Runtime + Methodology Overlay.
 
 Runtime layer: 30 probes corresponding 1:1 to the architectural patterns from
 "Giải phẫu một Agentic Operating System" (Lâm Nguyễn, 2026) —

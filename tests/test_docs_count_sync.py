@@ -90,6 +90,19 @@ STALE_PATTERNS = [
     r"\b47 / 47\b",
     r"\b50-probe\b",
     r"\b50 / 50\b",
+    # v0.11.4.1 freeze — guard against stale claims sneaking back in
+    # after the v0.15.4 doc-sync (Finding B from post-merge audit).
+    r"\b53-probe\b",
+    r"\b53 probes?\b",
+    r"\b53 / 53\b",
+    r"\b53/53\b",
+    r"\b53 conformance probes\b",
+    r"\b367 passed\b",
+    r"\b26 slash\b",
+    r"\bcurrent: \*\*v0\.11\.4\.1\*\*",
+    r"\bshipping runtime is \*\*v0\.11\.4\.1\*\*",
+    r"\boverlay v0\.11\.4\.1\b",
+    r"\bVibecodeKit Hybrid Ultra v0\.11\.4\.1\)",
     # REFINE-FINAL additions: previous-release version literals that
     # must not leak into current-release prose.
     r"canonical version string \(`0\.11\.[0-2]`\)",

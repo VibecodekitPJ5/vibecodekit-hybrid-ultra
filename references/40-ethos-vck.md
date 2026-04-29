@@ -58,7 +58,7 @@ VCK-HU đã làm điều này: stdlib-only core, runtime data ở `~/.vibecode/`
 
 Tool tốt nhất giải quyết vấn đề của chính người tạo ra. Mỗi feature build vì **needed**, không vì **requested**. Đặc thù của 1 vấn đề thật **luôn thắng** sự tổng quát của 1 vấn đề giả định.
 
-VCK-HU sinh ra vì author cần methodology rigid + VN-first cho thị trường Việt. Đó là vì sao 53-probe audit + RRI 5×3 + VN-first không thể compromise.
+VCK-HU sinh ra vì author cần methodology rigid + VN-first cho thị trường Việt. Đó là vì sao 87-probe audit (at v0.15.4; was 53 in v0.11.x) + RRI 5×3 + VN-first không thể compromise.
 
 ---
 

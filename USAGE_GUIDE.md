@@ -1,10 +1,11 @@
 # VibecodeKit Hybrid Ultra — Hướng dẫn sử dụng chi tiết
 
 Bộ kit đầy đủ để build dự án theo phương pháp **VIBECODE-MASTER** với **Full
-Agentic OS** runtime (53 conformance probes @ 100 % parity, all actionable tests pass
+Agentic OS** runtime (87 conformance probes @ 100 % parity at v0.15.4, all actionable tests pass
 từ repo root; bundled `tests/` trong skill zip chứa một subset đại diện để
 user smoke-test sau khi extract — xem §15.10).  Bản này ứng với
-**v0.11.4.1** — full big-update đã ship cả 6 feature từ taw-kit
+**v0.15.4** — doc-sync hotfix.  v0.11.4.1 was the original full
+big-update that shipped all 6 taw-kit features
 integration: F1 scaffold engine (10 preset × 3 stacks), F2 deploy
 orchestrator (7 target), F3 auto-commit + sensitive-file guard, F4
 single-prompt `/vibe` router, F5 VN error translator + faker, F6
@@ -150,7 +151,7 @@ Là "overlay" cho các CLI dùng `.claude/` hoặc `.claw/` convention:
 
 ```
 .claude/
-├── commands/       # 26 slash commands (/vibe-*)
+├── commands/       # 41 slash commands (25 `/vibe-*` + 16 `/vck-*`)
 ├── agents/         # 5 agent cards (coordinator, scout, builder, qa, security)
 ├── hooks/          # 4 hook lifecycle scripts
 └── ...
@@ -342,7 +343,7 @@ slash command trong `.claude/commands/` sẵn sàng.
 | `/vibe-rri-ui` | Bước 7 — pipeline 4-phase cho UI. |
 | `/vibe-verify` | Đóng báo cáo verify. |
 | `/vibe-complete` | Completion Report. |
-| `/vibe-audit` | Chạy 53 conformance probes. |
+| `/vibe-audit` | Chạy 87 conformance probes (at v0.15.4). |
 | `/vibe-doctor` | Chẩn đoán sức khỏe cài đặt. |
 | `/vibe-dashboard` | Dashboard runtime. |
 | `/vibe-permission <cmd>` | Hỏi permission engine có allow lệnh không. |
@@ -942,7 +943,7 @@ File HTML tự-chứa (không framework, không network), nhúng full JSON summa
 # Lifecycle
 vibe doctor                       # health check
 vibe dashboard                    # runtime dashboard
-vibe audit --threshold 0.85       # 53 probes
+vibe audit --threshold 0.85       # 87 probes at v0.15.4 (canonical count grows per release)
 vibe install <destination>        # cài overlay vào project
 vibe compact [--reactive]         # layer 4/5 compaction
 
@@ -1231,8 +1232,9 @@ result = classify_text("...")
 export VIBECODE_SECURITY_CLASSIFIER=1
 ```
 Layer ML (ONNX + Haiku) chỉ active nếu cài `pip install -e ".[ml]"`.
-Mặc định OFF qua env var ở v0.14.1 — sẽ chuyển sang auto-on khi
-`.vibecode/classifier.env` tồn tại trong PR-B (T4).
+Auto-on từ v0.15.0 (PR-B / T4) — opt-out bằng
+`VIBECODE_SECURITY_CLASSIFIER=0`.  Layer ML chỉ active khi cài extras
+`pip install -e ".[ml]"`; layer regex luôn-on, stdlib-only.
 
 ### 18.2 `eval_select` — diff-based test selection
 
@@ -1324,7 +1326,7 @@ cp <upstream>/tests/touchfiles.json tests/touchfiles.json   # rồi chỉnh
 
 Bản v0.11.0 BIG-UPDATE (historical) tích hợp 6 strengths của
 [`taw-kit`](https://github.com/VagabondKingsman/taw-kit) thành layer
-mới trên VibecodeKit, **tất cả** 26 slash command + 53/53
+mới trên VibecodeKit, **tất cả** 41 slash command + 87/87
 conformance audit.  Phân theo 3 phase ship: **α** (v0.10.7), **β**
 (v0.10.8), **final** (v0.11.0).
 

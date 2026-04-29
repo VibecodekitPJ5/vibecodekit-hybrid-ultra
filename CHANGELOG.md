@@ -4,6 +4,73 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.15.4] — Doc-sync hotfix: T8 follow-up, v0.11.x literals removed
+
+Documentation-only patch.  The fresh post-merge audit run after
+v0.15.2 + v0.15.3 landed (recorded in `audit-v015-followup.md`)
+identified five findings:
+
+* **A (P1)** — 13 user-facing files still claimed v0.11.4.1 / 53-probe
+  / 526 tests / 26 slash commands, contradicting the live runtime
+  (v0.15.3, 87-probe audit, 500 tests, 41 slash commands).  Most
+  critical was `update-package/CLAUDE.md` — the active rule file
+  injected into AI sessions at startup.
+* **B (P2)** — `tests/test_docs_count_sync.py` `STALE_PATTERNS` did
+  not catch v0.11.x literals, so the regression in (A) crept in
+  unnoticed.
+* **C (P3)** — Several Python docstrings + comments still referenced
+  `v0.15.1` (the original tag for PR-1, which was rebased to 0.15.3
+  after PR-2 merged) instead of the rebased `v0.15.3`.
+* **D (P3)** — `docs/INTEGRATION-PLAN-v0.15.md` §5 still listed
+  proposal-era aspirational targets (`≥ 555 tests`, `81/81 audit`)
+  without an "actual landed" annotation.
+* **E (P3)** — `v0.11.4.1-refine-report.md` was still in the repo
+  root four releases after that tag.
+
+### Fixed
+
+* **Finding A** — sync version literals + counts in
+  `update-package/CLAUDE.md`, `README.md`, `SKILL.md`, root +
+  update-package `USAGE_GUIDE.md` & `QUICKSTART.md`,
+  `update-package/README.md`, `references/40-ethos-vck.md`,
+  `LICENSE-third-party.md`, `scripts/vibecodekit/__init__.py`
+  docstring, `scripts/vibecodekit/auto_commit_hook.py` docstring.
+  README "License: Not yet specified" replaced with the actual
+  MIT cross-reference (LICENSE has been in the repo since v0.14).
+* **`update-package/.claw/hooks/session_start.py`** — runtime banner
+  now reads `update-package/VERSION` at session start instead of
+  hard-coding `v0.11.2`, so future bumps no longer drift.
+* **Finding B** — extended `STALE_PATTERNS` in
+  `tests/test_docs_count_sync.py` to catch `\b53-probe\b`,
+  `\b53/53\b`, `\b53 conformance probes\b`, `\b367 passed\b`,
+  `\b26 slash\b`, and the `current: **v0.11.4.1**` /
+  `shipping runtime is **v0.11.4.1**` literals.  The next time a
+  v0.11.x claim leaks into forward-facing prose pytest will FAIL.
+* **Finding C** — `cli.py`, `conformance_audit.py`, `learnings.py`
+  + `update-package/.claw/hooks/session_start.py` docstrings now
+  cite v0.15.3 (the actual landing version) instead of v0.15.1.
+* **Finding D** — `docs/INTEGRATION-PLAN-v0.15.md` §5 now carries a
+  `Post-implementation note (v0.15.4)` block clarifying the actual
+  vs. aspirational counts (500 vs ≥555 tests; 87 vs 81 probes).
+* **Finding E** — `v0.11.4.1-refine-report.md` deleted from repo
+  root.  CHANGELOG remains the canonical history for that release.
+
+### Verified
+
+* `pytest tests -q` — **500 / 500 PASS** (unchanged; doc-only patch).
+* `python -m vibecodekit.conformance_audit --threshold 1.0` —
+  **87 / 87 @ 100 %** (unchanged; both with and without
+  `VIBECODE_UPDATE_PACKAGE`).
+* `python tools/validate_release_matrix.py --skill .
+  --update ./update-package` — L1 + L2 + L3 PASS.
+* `grep -rn "53-probe\|53/53\|26 slash\|v0\.11\.4\.1"
+  --include="*.md"` — only matches CHANGELOG history entries +
+  intentionally-historical `(historical)` sections of `SKILL.md`.
+
+No code-logic changes; no probe / test count delta; classifier
+default still option (b) auto-on with `VIBECODE_SECURITY_CLASSIFIER=0`
+opt-out.
+
 ## [0.15.3] — Audit-tool fix + cleanup (post-T4)
 
 Patch release that closes the four non-critical findings from the v0.15.0

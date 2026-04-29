@@ -33,7 +33,7 @@ from . import (
 def _find_slash_command(here: Path, name: str) -> Path | None:
     """Locate a `.claude/commands/<name>` shipped alongside the skill bundle.
 
-    v0.15.1 fix (Bug #1 from the v0.15.0 deep-dive audit): probes #40 and
+    v0.15.3 fix (Bug #1 from the v0.15.0 deep-dive audit): probes #40 and
     #44 used to call this with ``here = repo_root`` and the loop walked
     ``here.parents[level]`` which never inspects ``here`` itself.  Since
     the canonical source-tree layout has ``update-package/`` as a *child*

@@ -629,7 +629,7 @@ def _cmd_module(args: argparse.Namespace) -> int:
 
 
 def _cmd_team(args: argparse.Namespace) -> int:
-    """v0.15.1 (Bug #6) — pass-through to ``vibecodekit.team_mode``.
+    """v0.15.3 (Bug #6) — pass-through to ``vibecodekit.team_mode``.
 
     Forwards every positional / option after ``vibe team`` to
     :func:`team_mode._main` so existing callers using
@@ -642,14 +642,14 @@ def _cmd_team(args: argparse.Namespace) -> int:
 
 
 def _cmd_learn(args: argparse.Namespace) -> int:
-    """v0.15.1 (Bug #6) — pass-through to ``vibecodekit.learnings``."""
+    """v0.15.3 (Bug #6) — pass-through to ``vibecodekit.learnings``."""
     from . import learnings
     forwarded = list(getattr(args, "learn_argv", []) or [])
     return learnings._main(forwarded)
 
 
 def _cmd_pipeline(args: argparse.Namespace) -> int:
-    """v0.15.1 (Bug #6) — pass-through to ``vibecodekit.pipeline_router``."""
+    """v0.15.3 (Bug #6) — pass-through to ``vibecodekit.pipeline_router``."""
     from . import pipeline_router
     forwarded = list(getattr(args, "pipeline_argv", []) or [])
     return pipeline_router._main(forwarded)

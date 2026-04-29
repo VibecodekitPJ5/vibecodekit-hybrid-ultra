@@ -109,7 +109,9 @@ def test_audit_from_fresh_install(fresh_root):
     # 2. Run `vibe install` to populate ai-rules/vibecodekit/ with runtime assets.
     r_install = _run_cli(["install", str(fresh_root)], cwd=fresh_root)
     assert r_install.returncode == 0, r_install.stderr
-    # 3. Now audit end-to-end at threshold 1.0 — expect 53/53.
+    # 3. Now audit end-to-end at threshold 1.0 — expect ≥ 53/53 probes
+    #    (the assertion below uses ``>= 53`` so newer releases that add probes
+    #    still pass; v0.15.4 ships 87/87).
     env = {"VIBECODE_UPDATE_PACKAGE": str(update_pkg)}
     r = _run_cli(["audit", "--threshold", "1.0"], cwd=fresh_root, env=env)
     assert r.returncode == 0, r.stderr

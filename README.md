@@ -113,14 +113,16 @@ Download the latest skill bundle from
 
 ```bash
 # Skill bundle (full runtime + tests + docs)
-curl -L https://github.com/ykjpalbubp/vibecodekit-hybrid-ultra/releases/download/v0.11.4.1/vibecodekit-hybrid-ultra-v0.11.4.1-skill.zip -o skill.zip
+# Replace vX.Y.Z with the latest release tag (see /releases page).
+curl -L https://github.com/ykjpalbubp/vibecodekit-hybrid-ultra/releases/download/vX.Y.Z/vibecodekit-hybrid-ultra-vX.Y.Z-skill.zip -o skill.zip
 unzip skill.zip -d ~/.claude/skills/vibecodekit-hybrid-ultra
 ```
 
 ### Option 2 — install update package into an existing project
 
 ```bash
-curl -L https://github.com/ykjpalbubp/vibecodekit-hybrid-ultra/releases/download/v0.11.4.1/vibecodekit-hybrid-ultra-v0.11.4.1-update-package.zip -o update.zip
+# Replace vX.Y.Z with the latest release tag (see /releases page).
+curl -L https://github.com/ykjpalbubp/vibecodekit-hybrid-ultra/releases/download/vX.Y.Z/vibecodekit-hybrid-ultra-vX.Y.Z-update-package.zip -o update.zip
 unzip update.zip -d /path/to/your/project/
 ```
 
@@ -146,16 +148,17 @@ python3 tools/validate_release_matrix.py \
     --update  "$(pwd)/update-package"
 ```
 
-Expected gate output:
+Expected gate output (concrete count grows with each release — the
+important invariant is that pytest exits 0 with no failures and the
+audit reports 100 % parity):
 
 ```
-pytest                            : 367 passed, 15 skipped
-audit (×any)                      : 53/53 met=True
+pytest                            : 500 passed                # at v0.15.4
+audit (×any)                      : 87/87 met=True            # at v0.15.4
 validate_release_matrix (default) : PASS
 ```
 
-(Under `root`, pytest reports `366 passed, 16 skipped` — the
-`test_install_into_readonly_dir` test is intentionally
+(Under `root`, the `test_install_into_readonly_dir` test is intentionally
 `skipif(geteuid() == 0)` because root bypasses POSIX DAC and the
 sibling file-where-dir test already covers the surface.)
 
@@ -197,9 +200,10 @@ Question banks live in `assets/rri-question-bank.json`
 
 ## License
 
-Not yet specified.  Treat as "all rights reserved" by default until
-a `LICENSE` file is added.  Open an issue if you need a specific
-license added.
+MIT (with attribution paragraph for the gstack-derived `/vck-*` slash
+commands).  See [`LICENSE`](LICENSE) for the canonical text and
+[`LICENSE-third-party.md`](LICENSE-third-party.md) for the inspiration
+/ rewrite-and-integration credit on the gstack → `/vck-*` derivation.
 
 ---
 
@@ -207,10 +211,11 @@ license added.
 
 | Gate | Result |
 |---|---|
-| pytest (367 cases) | PASS |
-| audit (53 probes) | 53/53 met=True |
-| validate_release_matrix (default) | PASS in 2.1s |
+| pytest (500 cases at v0.15.4) | PASS |
+| audit (87 probes at v0.15.4) | 87/87 met=True |
+| validate_release_matrix (default) | PASS |
 | All 170 Cf codepoints × `rm -rf /` bypass | blocked |
 
-See `CHANGELOG.md` for full history and `v0.11.4.1-refine-report.md`
-on the latest release for stress-dipdive results.
+See `CHANGELOG.md` for full version history and the per-release
+`*-refine-report.md` artifacts (kept under `docs/historical/` for
+releases more than two minors old).
