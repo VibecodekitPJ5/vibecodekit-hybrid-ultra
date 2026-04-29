@@ -3,7 +3,7 @@
   "kind": "vibecodekit.manifest.llm",
   "name": "vibecodekit-hybrid-ultra",
   "version": "0.16.2",
-  "description": ">-",
+  "description": "VibecodeKit Hybrid Ultra — agentic OS overlay for Claude Code/Codex CLI/ChatGPT: 25 /vibe-* lifecycle commands + 16 /vck-* extension commands wrapped in a 7-role sub-agent runtime with 6-layer permission pipeline, MCP integration, and 3-tier persistent memory.",
   "introspection": {
     "skill_md": "SKILL.md",
     "plugin_manifest": "assets/plugin-manifest.json",
@@ -18,7 +18,7 @@
     "discovery_module": "vibecodekit.skill_discovery"
   },
   "skill_frontmatter": {
-    "when_to_use": ">-",
+    "when_to_use": "Activate when the user wants to scaffold, plan, build, review, or ship a software project end-to-end with structured methodology gates (RRI/RRI-T/RRI-UX), or when they invoke any /vibe-* or /vck-* slash command.",
     "triggers": [
       "/vibe-run",
       "/vibe-doctor",
