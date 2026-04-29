@@ -655,6 +655,33 @@ def _cmd_pipeline(args: argparse.Namespace) -> int:
     return pipeline_router._main(forwarded)
 
 
+def _cmd_verb(args: argparse.Namespace) -> int:
+    """PR5: ``vibe verb <name> [args...]`` — front-door 8 verb chuẩn.
+
+    Map verb sang slash command canonical (xem
+    ``vibecodekit.verb_router._VERB_TO_COMMAND``) và in ra command +
+    args để caller (slash-command runner / wrapper script) thực thi
+    tiếp.  Output là 1 dòng plain-text (slash command + args đã
+    quote bằng ``shlex.quote``).
+    """
+    import shlex
+
+    from . import verb_router
+
+    verb = args.verb_name
+    if verb is None or verb in ("--help", "-h", "help"):
+        print(verb_router.help_text())
+        return 0
+    forwarded = list(getattr(args, "verb_argv", []) or [])
+    try:
+        routed = verb_router.route_verb(verb, forwarded)
+    except verb_router.UnknownVerbError as e:
+        print(f"error: {e}", file=sys.stderr)
+        return 2
+    print(" ".join(shlex.quote(p) for p in routed))
+    return 0
+
+
 def _cmd_refine(args: argparse.Namespace) -> int:
     """Wire ``vibe refine classify`` to ``refine_boundary.classify_change``."""
     import os
@@ -796,7 +823,7 @@ def main(argv=None) -> int:
                      "rri-t", "rri-ux", "vn-check", "config", "intent",
                      "scaffold", "ship", "manifest", "refine", "verify",
                      "anti-patterns", "module", "context", "activate",
-                     "team", "learn", "pipeline", "demo"):
+                     "team", "learn", "pipeline", "verb", "demo"):
         sub = sp.add_parser(cmd_name)
         sub.add_argument("--root", default=".")
         if cmd_name == "run":
@@ -1108,6 +1135,21 @@ def main(argv=None) -> int:
             mn.add_argument("--target", default=".",
                             help="Codebase root to plan against (default: cwd).")
             sub.set_defaults(fn=_cmd_module)
+        elif cmd_name == "verb":
+            # PR5: front-door /vibe <verb>.  ``verb_name`` optional;
+            # when missing → in help_text song ngữ.  args ``verb_argv``
+            # forward verbatim qua canonical command.
+            from . import verb_router as _vr
+            sub.description = _vr.help_text()
+            sub.add_argument(
+                "verb_name", nargs="?", default=None,
+                help="Một trong: " + ", ".join(_vr.SUPPORTED_VERBS),
+            )
+            sub.add_argument(
+                "verb_argv", nargs=argparse.REMAINDER,
+                help="Args forward verbatim qua slash command canonical.",
+            )
+            sub.set_defaults(fn=_cmd_verb)
         elif cmd_name == "demo":
             sub.set_defaults(fn=_cmd_demo)
 

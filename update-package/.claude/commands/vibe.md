@@ -78,6 +78,39 @@ print(r.explain(match)) # 'Đã hiểu ý bạn (95% chắc chắn). Sẽ chạy
 
 See `USAGE_GUIDE.md` §16.1 for the full keyword table and `IntentRouter` Python API.
 
+## Verb front-door (PR5+, song ngữ)
+
+VN: Ngoài prose tự do, gõ `/vibe <verb>` cho 1 trong **8 verb chuẩn**
+    để dispatch trực tiếp tới canonical slash command — ngắn hơn,
+    đỡ phải nhớ tên dài.
+
+EN: In addition to free-form prose, type `/vibe <verb>` for one of
+    **8 canonical verbs** to dispatch directly to the canonical slash
+    command — shorter and easier to remember.
+
+| Verb     | → Canonical command | VN nghĩa                              | EN meaning                      |
+|----------|---------------------|---------------------------------------|---------------------------------|
+| `scan`   | `/vibe-scan`        | scan repo + docs                      | scout pass over repo + docs     |
+| `plan`   | `/vibe-blueprint`   | blueprint architecture + interfaces   | architecture + data + interfaces |
+| `build`  | `/vibe-scaffold`    | scaffold project từ preset            | scaffold runnable starter       |
+| `review` | `/vck-review`       | adversarial 7-specialist review       | adversarial multi-specialist    |
+| `qa`     | `/vck-qa`           | real-browser QA checklist + fix loop  | real-browser QA + fix loop      |
+| `ship`   | `/vck-ship`         | test → review → commit → push → PR    | test → review → commit → push → PR |
+| `audit`  | `/vibe-audit`       | 87-probe internal self-test           | 87-probe internal regression    |
+| `doctor` | `/vibe-doctor`      | kiểm tra overlay cài đúng             | overlay health check            |
+
+```bash
+# CLI (in ra slash command đã quote, dễ pipe)
+vibe verb scan
+vibe verb ship --target vercel --prod
+vibe verb               # in song ngữ help, list 8 verb
+```
+
+Verb không hợp lệ (vd. `vibe verb bogus`) trả exit code 2 + thông báo
+8 verb hợp lệ.  4 command đã `deprecated: true` ở PR4 (`/vibe-ship`,
+`/vibe-rri-t`, `/vibe-rri-ui`, `/vibe-rri-ux`) **không** nằm trong
+verb map — front-door luôn route tới canonical đang sống.
+
 ## References
 
 - `ai-rules/vibecodekit/references/00-overview.md`
