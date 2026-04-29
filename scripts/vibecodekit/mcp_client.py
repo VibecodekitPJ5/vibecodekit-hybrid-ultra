@@ -368,7 +368,13 @@ class StdioSession:
     # MCP methods ---------------------------------------------------------
     def initialize(self,
                    client_name: str = "vibecodekit",
-                   client_version: str = "0.11.4.1") -> Dict[str, Any]:
+                   client_version: Optional[str] = None) -> Dict[str, Any]:
+        if client_version is None:
+            # Defer the import to avoid bootstrap order issues; by the time
+            # any caller invokes ``initialize`` the parent package is fully
+            # loaded and ``VERSION`` reflects the bundle's ``VERSION`` file.
+            from . import VERSION as _BUNDLE_VERSION
+            client_version = _BUNDLE_VERSION
         resp = self._request("initialize", {
             "protocolVersion": MCP_PROTOCOL_VERSION,
             "capabilities": {"tools": {}},

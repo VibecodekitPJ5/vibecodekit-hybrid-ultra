@@ -74,10 +74,17 @@ def _handle(req: Dict[str, Any]) -> None:
     rid = req.get("id")
     params = req.get("params") or {}
     if method == "initialize":
+        # Resolve the bundle version lazily so the handshake always
+        # advertises the same value as the canonical ``VERSION`` file
+        # (avoids drift after a release bump).
+        try:
+            from .. import VERSION as _BUNDLE_VERSION
+        except Exception:
+            _BUNDLE_VERSION = "0.0.0+unknown"
         _respond(rid, {
             "protocolVersion": "2024-11-05",
             "capabilities": {"tools": {"listChanged": False}},
-            "serverInfo": {"name": "vibecodekit-selfcheck", "version": "0.11.4.1"},
+            "serverInfo": {"name": "vibecodekit-selfcheck", "version": _BUNDLE_VERSION},
         })
     elif method == "notifications/initialized":
         return  # no reply for notifications

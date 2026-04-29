@@ -1,7 +1,7 @@
 {
   "$schema": "https://vibecodekit.dev/schema/plugin-manifest-0.10.json",
   "name": "vibecodekit-hybrid-ultra",
-  "version": "0.15.4",
+  "version": "0.15.5",
   "commands": [
     {
       "name": "vibe-run",

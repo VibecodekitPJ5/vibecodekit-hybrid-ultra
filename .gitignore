@@ -14,6 +14,10 @@ htmlcov/
 .nox/
 .hypothesis/
 *.egg-info/
+# Explicit guard for the bundle's editable-install metadata directory —
+# `pip install -e .` regenerates `PKG-INFO` from `pyproject.toml`, so it
+# must never be committed (audit P3 #11, v0.15.4-recheck).
+scripts/vibecodekit_hybrid_ultra.egg-info/
 *.egg
 build/
 dist/

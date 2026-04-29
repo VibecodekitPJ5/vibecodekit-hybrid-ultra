@@ -4,6 +4,54 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.15.5] — Green hotfix: stale runtime version constants + egg-info guard
+
+Patch release closing the three P1 runtime-version-constant findings and
+the P3 egg-info build-artefact finding from
+`docs/audits/v0.15.4-recheck.md`.  No behavioural change; pure
+constant fixes + version sync.
+
+### Fixed
+
+* **P1 #1 — `_FALLBACK_VERSION` was 4 releases stale.**
+  `scripts/vibecodekit/__init__.py:32` was pinned to `"0.11.4.1"`; bumped
+  to `"0.15.5"` so `vibecodekit.__version__` reports a sane value when
+  the bundle's `VERSION` file cannot be located (partial-copy installs).
+* **P1 #2 — MCP `client_version` default was `"0.11.4.1"`.**
+  `scripts/vibecodekit/mcp_client.py` `StdioSession.initialize` now
+  defaults `client_version` to `None` and resolves the canonical
+  `vibecodekit.VERSION` lazily, so every MCP `clientInfo.version`
+  handshake announces the live bundle version (no more drift after
+  release bumps).
+* **P1 #3 — MCP self-check server advertised `"0.11.4.1"`.**
+  `scripts/vibecodekit/mcp_servers/selfcheck.py` `serverInfo.version` now
+  also resolves from `vibecodekit.VERSION` (with a `0.0.0+unknown`
+  guard if the parent package is somehow unavailable).
+* **P3 #11 — `.gitignore` did not explicitly guard `scripts/vibecodekit_hybrid_ultra.egg-info/`.**
+  The pre-existing `*.egg-info/` glob pattern already covers it, but
+  added an explicit path entry with a comment so the editable-install
+  metadata never gets committed by accident.
+
+### Changed
+
+* **Version bump** — `0.15.4 → 0.15.5` across `VERSION`,
+  `update-package/VERSION`, `pyproject.toml`, `manifest.llm.json`,
+  `assets/plugin-manifest.json`, `update-package/.claw.json`,
+  `SKILL.md` frontmatter, and `update-package/.claude/commands/vck-pipeline.md`
+  frontmatter.
+
+### Verification
+
+| Gate | Before (v0.15.4) | This PR |
+|---|---|---|
+| `pytest tests` | 544 / 544 | **544 / 544** |
+| `conformance_audit --threshold 1.0` | 87 / 87 @ 100 % | **87 / 87 @ 100 %** |
+| `validate_release_matrix.py` | PASS | **PASS** |
+
+Findings #4–#10 + #12 are deferred to PR-2 (v0.16.0-α) and PR-3
+(v0.16.0 cleanup) per the rollout plan in
+`docs/audits/v0.15.4-recheck.md` §Section 4.
+
 ## [0.15.4] — Doc-sync hotfix: T8 follow-up, v0.11.x literals removed
 
 Documentation-only patch.  The fresh post-merge audit run after
