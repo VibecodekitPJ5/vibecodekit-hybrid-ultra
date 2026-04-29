@@ -163,12 +163,26 @@ python3 tools/validate_release_matrix.py \
 
 Expected gate output (concrete count grows with each release — the
 important invariant is that pytest exits 0 with no failures and the
-internal conformance self-test reports all probes passing):
+internal conformance self-test reports all probes passing).  Số liệu
+tham khảo dưới đây ứng với commit hiện tại trên nhánh `main` (xem
+[`CHANGELOG.md`](CHANGELOG.md) cho từng release):
 
 ```
-pytest                            : 500 passed                # at v0.15.4
-audit (×any)                      : 87/87 met=True            # at v0.15.4 (internal self-test)
+pytest                            : <N> passed                # at current main (see CHANGELOG.md)
+audit (×any)                      : 87/87 met=True[^bench]    # at current main (internal self-test)
 validate_release_matrix (default) : PASS
+```
+
+[^bench]: Internal regression gate — see [BENCHMARKS-METHODOLOGY.md](BENCHMARKS-METHODOLOGY.md) for what the 87/87 number actually measures (architectural invariants only, not external code-quality benchmarks).
+
+Để lấy số chính xác cho bản đang ở local, chạy:
+
+```bash
+cat VERSION                                                  # ví dụ: 0.16.2
+VIBECODE_UPDATE_PACKAGE="$(pwd)/update-package" \
+  PYTHONPATH=./scripts python3 -m pytest tests -q | tail -1  # số case pytest
+PYTHONPATH=./scripts python3 -m vibecodekit.conformance_audit \
+    --threshold 1.0 | head -1                                # ví dụ: parity: 100.00% (87/87, threshold 100%)
 ```
 
 (Under `root`, the `test_install_into_readonly_dir` test is intentionally
@@ -222,10 +236,16 @@ commands).  See [`LICENSE`](LICENSE) for the canonical text and
 
 ## Quality assurance
 
+Số ca pytest và số probe lớn dần theo từng release; bảng dưới đây
+phản ánh trạng thái **tại nhánh `main` hiện tại** (xem
+[`CHANGELOG.md`](CHANGELOG.md) cho lịch sử số liệu theo từng version,
+và [`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md) để biết
+"87/87" thực sự đo cái gì — không phải benchmark chất lượng ngoài).
+
 | Gate | Result | What it measures |
 |---|---|---|
-| pytest (500 cases at v0.15.4) | PASS | Unit + integration correctness |
-| conformance self-test (87 probes at v0.15.4) | 87/87 met=True | Internal regression invariants ([details](BENCHMARKS-METHODOLOGY.md)) |
+| pytest (xem `pytest --collect-only -q \| tail`) | PASS | Unit + integration correctness |
+| conformance self-test | 87/87 met=True[^bench] | Internal regression invariants ([details](BENCHMARKS-METHODOLOGY.md)) |
 | validate_release_matrix (default) | PASS | Layout integrity across 3 deploy modes |
 | All 170 Cf codepoints × `rm -rf /` bypass | blocked | Permission engine coverage |
 

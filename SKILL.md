@@ -100,7 +100,7 @@ hooks:
       command: "python3 -m vibecodekit.cli compact"
 ---
 
-# VibecodeKit Hybrid Ultra — current: **v0.15.4**
+# VibecodeKit Hybrid Ultra — current: see [`VERSION`](VERSION) (at current main; xem [`CHANGELOG.md`](CHANGELOG.md))
 
 For the canonical version history see `CHANGELOG.md`; the per-version
 sections below document **how the kit evolved** — each subsection
@@ -204,7 +204,7 @@ Closes the structural wiring gaps surfaced by the v0.11.2 deep-dive:
 
 > 📌 The table and prose below describe **how the kit evolved** — each row
 > lists the version a subsystem was *originally introduced*, not the version
-> it currently runs.  The shipping runtime is **v0.15.4**; every subsystem
+> it currently runs.  The shipping runtime is whatever [`VERSION`](VERSION) reports at current main (xem [`CHANGELOG.md`](CHANGELOG.md)); every subsystem
 > below is active, hardened, and covered by the 87-probe internal
 > conformance self-test plus supporting tests (note: this is an internal
 > regression guard, not an external quality benchmark — see
@@ -237,7 +237,7 @@ release:
 | L | Structured notifications (lock) |      v0.9 | `task_runtime.py`     | 30    |
 
 The conformance audit (`python -m vibecodekit.cli audit`) now runs
-**87 internal regression probes** at v0.15.4 (30 OS + methodology +
+**87 internal regression probes** at current main (30 OS + methodology +
 packaging/wiring + integration invariants) — an internal self-test
 that verifies the runtime has not regressed against its own
 specification (see [`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md)

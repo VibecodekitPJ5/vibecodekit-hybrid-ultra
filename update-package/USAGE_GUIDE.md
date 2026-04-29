@@ -2001,7 +2001,8 @@ vibe permission "echo hi" --mode plan --unsafe        # → allow (force bypass 
 
 ```bash
 PYTHONPATH=./scripts pytest tests
-# → expected: 588 passed at v0.16.2 (full suite, no optional extras)
+# → expected: all tests pass at current main (số case lớn dần theo
+#   release; xem CHANGELOG.md hoặc chạy `pytest --collect-only -q | tail`).
 ```
 
 ### 25.2 Gate 2 — conformance audit @ threshold 1.0

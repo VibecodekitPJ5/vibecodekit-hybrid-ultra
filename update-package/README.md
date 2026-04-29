@@ -46,12 +46,16 @@ with `PYTHONPATH` pointing at the scripts directory.
 
 ## Release gate
 
-v0.16.2 ships with:
+Bản hiện tại trên nhánh `main` (xem `CHANGELOG.md` cho từng release; số
+ca pytest tăng theo thời gian — chạy `pytest --collect-only -q | tail`
+để xem con số chính xác cho commit của bạn):
 
-- **pytest**: all actionable tests pass (588 cases at v0.16.2)
-- **conformance self-test**: 87 / 87 internal regression probes pass (self-test, not external benchmark; see `BENCHMARKS-METHODOLOGY.md`)
+- **pytest**: all actionable tests pass (số case tăng theo release; xem `CHANGELOG.md`)
+- **conformance self-test**: 87 / 87 internal regression probes pass[^bench] (self-test, not external benchmark; see `BENCHMARKS-METHODOLOGY.md`)
 - **fresh-extract self-test**: 87 / 87 probes pass
 - **integration tests**: 8 e2e + 3 UX + 6 version-sync
+
+[^bench]: Internal regression gate — chi tiết "87/87" đo cái gì xem `BENCHMARKS-METHODOLOGY.md` (architectural invariants only, không phải benchmark code-quality ngoài như HumanEval / SWE-bench).
 
 v0.11.4.1 / v0.15.4 are preserved as historical milestones in `CHANGELOG.md`.
 
