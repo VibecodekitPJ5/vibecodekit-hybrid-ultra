@@ -1,9 +1,9 @@
-# claw-code-pack (VibecodeKit Hybrid Ultra v0.16.1)
+# claw-code-pack (VibecodeKit Hybrid Ultra v0.16.2)
 
 Drop-in overlay for projects that use `claw-code` / Claude Code / Codex.
 After extracting into your project root you'll have:
 
-- `.claude/commands/` — **42 slash commands** at v0.16.1: 25 `/vibe-*` + 1 master `/vibe`
+- `.claude/commands/` — **42 slash commands** at v0.16.2: 25 `/vibe-*` + 1 master `/vibe`
   (`/vibe`, `/vibe-scaffold`, `/vibe-ship`, `/vibe-run`, `/vibe-doctor`,
   `/vibe-subagent`, `/vibe-memory`, `/vibe-approval`, `/vibe-task`,
   `/vibe-scan`, `/vibe-vision`, `/vibe-rri`, `/vibe-rri-t`, `/vibe-rri-ux`,
@@ -46,9 +46,9 @@ with `PYTHONPATH` pointing at the scripts directory.
 
 ## Release gate
 
-v0.16.0 ships with:
+v0.16.2 ships with:
 
-- **pytest**: all actionable tests pass (756 cases at v0.16.0)
+- **pytest**: all actionable tests pass (588 cases at v0.16.2)
 - **conformance audit**: 87 / 87 probes @ 100 % parity
 - **fresh-extract audit**: 87 / 87 @ 100 %
 - **integration tests**: 8 e2e + 3 UX + 6 version-sync

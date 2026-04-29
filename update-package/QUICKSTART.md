@@ -54,7 +54,7 @@ export PYTHONPATH=~/.vibecode/vibecodekit-hybrid-ultra/scripts
 
 # 3. Test thử một lệnh
 python -m vibecodekit.cli audit
-# → kỳ vọng: parity: 100.00%   (87/87, threshold 85%) at v0.16.0
+# → kỳ vọng: parity: 100.00%   (87/87, threshold 85%) at v0.16.2
 ```
 
 Dùng `vibe rri-t reports/testing.jsonl` sau mỗi sprint để kiểm tra cổng
@@ -96,7 +96,7 @@ pytest tests/ -q        # → all actionable tests pass
 
 # 2. Conformance audit
 PYTHONPATH=scripts python -m vibecodekit.conformance_audit
-# → parity: 100.00%   (87/87, threshold 85%) at v0.16.0
+# → parity: 100.00%   (87/87, threshold 85%) at v0.16.2
 
 # 3. Permission engine (phải chặn lệnh nguy hiểm)
 PYTHONPATH=scripts python -m vibecodekit.cli permission "rm -rf /"

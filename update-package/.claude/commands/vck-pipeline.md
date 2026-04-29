@@ -1,7 +1,7 @@
 ---
 name: vck-pipeline
 description: Master router — type free-form prose to dispatch to one of the 3 VCK-HU pipelines (A. PROJECT CREATION / B. FEATURE DEV / C. CODE & SECURITY)
-version: 0.16.1
+version: 0.16.2
 allowed-tools: [Bash, Read]
 agent: coordinator
 inspired-by: ../vibe.md

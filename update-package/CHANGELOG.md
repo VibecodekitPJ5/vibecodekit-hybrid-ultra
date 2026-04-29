@@ -4,6 +4,29 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [0.16.2] — USAGE_GUIDE rewrite (full feature catalog)
+
+Doc-only release.  Rewrites `USAGE_GUIDE.md` (and the bundled
+`update-package/USAGE_GUIDE.md` mirror) to add a full reference catalog
+covering every shipped surface at v0.16.1:
+
+- §19 — **CLI reference (31 subcommand)** with examples for every
+  `python -m vibecodekit.cli <sub>` entry-point.
+- §20 — **Slash command reference (42 lệnh)**: 25 `/vibe-*` + 1 `/vibe`
+  + 16 `/vck-*`, each with agent binding and trigger bank.
+- §21 — **Sub-agent reference (7 vai)** with full ACL table
+  mirroring `subagent_runtime.PROFILES`.
+- §22 — **Hook event reference (33 event + 4 script)** including
+  opt-in `auto_commit_hook` (`VIBECODE_AUTOCOMMIT=1`) recipe.
+- §23 — **Conformance probe catalog (87 probe)** clustered by domain.
+- §24 — **Permission engine (6 layer)** diagram + per-mode semantics.
+- §25 — **Release-gate strategy** + N-PR rollout map for v0.16.x.
+
+Verification: pytest 588 passed · audit 87 / 87 @ 100 % ·
+release-matrix L1+L2+L3 PASS.
+
+Version bump 0.16.1 → 0.16.2 across 8 surfaces.
+
 ## [0.16.1] — Doc coherence + recheck cleanup
 
 Green-risk patch closing the five P3 findings discovered by the
