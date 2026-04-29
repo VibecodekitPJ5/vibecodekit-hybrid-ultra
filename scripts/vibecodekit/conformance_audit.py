@@ -1625,6 +1625,93 @@ def _probe_session_start_learnings_inject(tmp: Path) -> Tuple[bool, str]:
     return False, "no session_start.py found in any candidate root"
 
 
+def _probe_scaffold_seeds_vibecode_dir(tmp: Path) -> Tuple[bool, str]:
+    """#83 — ScaffoldEngine.apply() seeds .vibecode/ runtime files
+    (v0.15.0-alpha PR-C / T5).
+    """
+    from . import scaffold_engine as se
+    target = tmp / "scaffold-probe-target"
+    engine = se.ScaffoldEngine()
+    try:
+        result = engine.apply("blog", target, stack="nextjs")
+    except Exception as e:  # noqa: BLE001
+        return False, f"scaffold apply raised: {type(e).__name__}: {e}"
+    expected = {
+        ".vibecode/learnings.jsonl",
+        ".vibecode/team.json.example",
+        ".vibecode/classifier.env.example",
+        ".vibecode/README.md",
+    }
+    seeded = set(result.vibecode_seeded)
+    if not expected.issubset(seeded):
+        return False, f"scaffold seed missing: {expected - seeded}"
+    for rel in expected:
+        if not (target / rel).is_file():
+            return False, f"scaffold did not write {rel} to disk"
+    return True, f"scaffold seeded {len(seeded)} .vibecode files"
+
+
+def _probe_vck_pipeline_command(tmp: Path) -> Tuple[bool, str]:
+    """#84 — /vck-pipeline command exists, is wired into manifest +
+    intent_router, and the runtime dispatches all 3 pipelines
+    (v0.15.0-alpha PR-C / T6).
+
+    Honours ``VIBECODE_UPDATE_PACKAGE`` so the L3 release-matrix gate
+    (audit run from inside an installed project) can locate the skill
+    + manifest, same convention probe #82 uses.
+    """
+    repo_root = Path(__file__).resolve().parents[2]
+    update_candidates: List[Path] = []
+    if os.environ.get("VIBECODE_UPDATE_PACKAGE"):
+        update_candidates.append(Path(os.environ["VIBECODE_UPDATE_PACKAGE"]))
+    update_candidates.append(repo_root / "update-package")
+    update_candidates.append(repo_root)  # bundled-skill layout
+
+    skill_md: Path | None = None
+    manifest_path: Path | None = None
+    for cand in update_candidates:
+        candidate_skill = cand / ".claude" / "commands" / "vck-pipeline.md"
+        if candidate_skill.is_file():
+            skill_md = candidate_skill
+        candidate_manifest = cand / "manifest.llm.json"
+        if candidate_manifest.is_file():
+            manifest_path = candidate_manifest
+        if skill_md and manifest_path:
+            break
+    # Fall back to the source-tree manifest at repo root.
+    if manifest_path is None:
+        candidate_manifest = repo_root / "manifest.llm.json"
+        if candidate_manifest.is_file():
+            manifest_path = candidate_manifest
+    if skill_md is None:
+        return False, "vck-pipeline.md skill file missing"
+    if manifest_path is None:
+        return False, "manifest.llm.json missing"
+    body = skill_md.read_text(encoding="utf-8")
+    for required in ("PROJECT CREATION", "FEATURE DEV", "CODE & SECURITY"):
+        if required not in body:
+            return False, f"vck-pipeline.md missing pipeline section: {required}"
+
+    manifest_raw = manifest_path.read_text(encoding="utf-8")
+    if "/vck-pipeline" not in manifest_raw or "vck-pipeline" not in manifest_raw:
+        return False, "vck-pipeline not registered in manifest.llm.json"
+
+    from .pipeline_router import PipelineRouter
+    r = PipelineRouter()
+    cases = (
+        ("làm cho tôi shop online", "A"),
+        ("thêm tính năng login", "B"),
+        ("audit code OWASP security review", "C"),
+    )
+    for prose, want in cases:
+        d = r.route(prose)
+        if d.pipeline != want:
+            return False, (
+                f"router misroute: prose={prose!r} got={d.pipeline} want={want}"
+            )
+    return True, "vck-pipeline skill + manifest + 3-bucket dispatcher OK"
+
+
 PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     ("01_async_generator_loop",         _probe_async_generator),
     ("02_derived_needs_follow_up",      _probe_derived_follow_up),
@@ -1720,6 +1807,9 @@ PROBES: List[Tuple[str, Callable[[Path], Tuple[bool, str]]]] = [
     # v0.15.0-alpha — auto-on wiring probes (T3 + T4)
     ("81_classifier_auto_on_default",   _probe_classifier_auto_on_default),
     ("82_session_start_learnings_inject", _probe_session_start_learnings_inject),
+    # v0.15.0-alpha — scaffold seed + master pipeline dispatcher (T5 + T6)
+    ("83_scaffold_seeds_vibecode_dir",  _probe_scaffold_seeds_vibecode_dir),
+    ("84_vck_pipeline_command",         _probe_vck_pipeline_command),
 ]
 
 

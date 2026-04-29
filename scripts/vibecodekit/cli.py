@@ -380,13 +380,15 @@ def _cmd_scaffold(args: argparse.Namespace) -> int:
             return 0
         if args.scaffold_cmd == "apply":
             result = engine.apply(args.preset, args.target_dir,
-                                    stack=args.stack, force=args.force)
+                                    stack=args.stack, force=args.force,
+                                    seed_vibecode=not args.no_vibecode_seed)
             issues = engine.verify(result)
             print(json.dumps({
                 "preset": result.preset, "stack": result.stack,
                 "target_dir": str(result.target_dir),
                 "files_written": list(result.files_written),
                 "bytes_written": result.bytes_written,
+                "vibecode_seeded": list(result.vibecode_seeded),
                 "verify_issues": [i.message for i in issues],
             }, ensure_ascii=False, indent=2))
             return 0 if not issues else 1
@@ -860,6 +862,10 @@ def main(argv=None) -> int:
             sp_ap.add_argument("target_dir")
             sp_ap.add_argument("--stack", required=True)
             sp_ap.add_argument("--force", action="store_true")
+            sp_ap.add_argument("--no-vibecode-seed",
+                               dest="no_vibecode_seed",
+                               action="store_true",
+                               help="skip seeding .vibecode/ runtime files")
             sub.set_defaults(fn=_cmd_scaffold)
         elif cmd_name == "ship":
             sp2 = sub.add_subparsers(dest="ship_cmd")

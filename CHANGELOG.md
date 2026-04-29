@@ -4,6 +4,76 @@ All notable changes to VibecodeKit Hybrid Ultra are listed here.  The
 format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)
 and [Semver](https://semver.org/).
 
+## [Unreleased] — v0.15.0-alpha (PR-C — scaffold seeds + master /vck-pipeline T5 + T6)
+
+Third slice of the **"One Pipeline, Zero Dead-Code"** rollout
+(`docs/INTEGRATION-PLAN-v0.15.md`).  No version bump yet; `VERSION`
+stays at `0.14.1` until PR-D closes the cycle (T10).
+
+### Added
+
+* **`ScaffoldEngine.apply()` now seeds `.vibecode/` runtime files (T5).**
+  Every preset scaffolded with `/vibe-scaffold` (or
+  `vibe scaffold apply`) gets a four-file runtime context dropped at the
+  target's project root:
+    * `.vibecode/learnings.jsonl` — empty store, ready for `/vck-learn`
+      and the session_start auto-inject from PR-B / T3.
+    * `.vibecode/team.json.example` — opt-in template that documents
+      the team-mode required-gate ledger from PR-A / T1.
+    * `.vibecode/classifier.env.example` — documented opt-out env vars
+      for the security classifier (T4) and learnings inject (T3).
+    * `.vibecode/README.md` — short banner so new operators discover
+      the directory immediately.
+  The seed is **idempotent** — existing files are never overwritten.
+  CLI users can opt out with `vibe scaffold apply ... --no-vibecode-seed`.
+  `ScaffoldResult` now carries a `vibecode_seeded: tuple[str, ...]`
+  field listing the relative paths that were created.
+* **Master `/vck-pipeline` command (T6)** —
+  `update-package/.claude/commands/vck-pipeline.md` plus a Python
+  runtime `scripts/vibecodekit/pipeline_router.py`.  Single-prompt
+  dispatcher that classifies free-form prose into one of three
+  pipelines:
+    * **A. PROJECT CREATION** — `/vibe-scaffold` → `/vibe-blueprint`
+    * **B. FEATURE DEV** — `/vibe-run` → `/vck-ship`
+    * **C. CODE & SECURITY** — `/vck-cso` → `/vck-review`
+  Wired into `manifest.llm.json`, `SKILL.md`, and `intent_router.TIER_1`
+  (intent `VCK_PIPELINE`).  Below the 0.5 confidence threshold the
+  router asks for clarification instead of guessing.
+* **Audit probes #83 / #84** — pin the new wiring as conformance
+  invariants.  #83 runs `ScaffoldEngine.apply("blog", ...)` end-to-end
+  and verifies the four `.vibecode/` files appear on disk.  #84 looks
+  up `vck-pipeline.md` (honours `VIBECODE_UPDATE_PACKAGE` for L3
+  release-matrix), parses the manifest, and round-trips the dispatcher
+  on three sample prompts (one per pipeline).
+* **19 new regression tests** (`tests/test_pipeline_v015_pr_c.py`)
+  covering scaffold seed idempotency, JSON validity of
+  `team.json.example`, env-var documentation of `classifier.env.example`,
+  CLI opt-out via `--no-vibecode-seed`, all 3 pipeline dispatch cases,
+  low-confidence + empty-input handling, JSON serialisation of
+  `PipelineDecision`, keyword uniqueness invariant, CLI surface, and
+  manifest + intent_router wiring parity.
+
+### Fixed
+
+* **PR #6 follow-up: subprocess tests in `test_pipeline_v015_pr_b.py`
+  no longer leak the developer's real `~/.vibecode/learnings.jsonl`
+  into assertions.**  Devin Review caught that without
+  `VIBECODE_HOME` overridden, the four hook subprocess tests
+  (`test_session_start_hook_emits_learnings_inject_key`,
+  `test_session_start_injects_most_recent_learnings`,
+  `test_session_start_opt_out_with_env_var`,
+  `test_session_start_custom_limit`) would mix real user learnings
+  (timestamps >> 1e9) with the test entries (timestamps `1000.0 + i`),
+  causing intermittent assertion failures.  All four tests now
+  isolate the user store to `tmp_path / "fakehome"`.
+
+### Verification
+
+* `pytest tests` — **584 passed / 0 skipped** (was 565 in PR-B).
+* `conformance_audit --threshold 1.0` — **84 / 84 @ 100 %** (was 82).
+* `validate_release_matrix.py --skill . --update ./update-package` —
+  **PASS**.
+
 ## [Unreleased] — v0.15.0-alpha (PR-B — auto-on T3 + T4)
 
 Second slice of the **"One Pipeline, Zero Dead-Code"** rollout

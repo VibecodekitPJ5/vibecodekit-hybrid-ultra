@@ -253,6 +253,11 @@ TIER_1: tuple[tuple[str, tuple[str, ...]], ...] = (
         "phan bien plan", "codex review",
         "gemini review", "second brain review",
     )),
+    ("VCK_PIPELINE", (
+        "/vck-pipeline", "vck-pipeline",
+        "pipeline router", "master pipeline",
+        "vck pipeline", "chọn pipeline", "chon pipeline",
+    )),
 )
 
 # Synthetic pipelines: when one intent is mentioned in a high-level way
@@ -318,6 +323,7 @@ _INTENT_TO_SLASH: dict[str, str] = {
     "VCK_LEARN":              "/vck-learn",
     "VCK_RETRO":              "/vck-retro",
     "VCK_SECOND_OPINION":     "/vck-second-opinion",
+    "VCK_PIPELINE":    "/vck-pipeline",
     "VCK_INVESTIGATE": "/vck-investigate",
     "VCK_CANARY":      "/vck-canary",
     "VCK_SHIP":        "/vck-ship",

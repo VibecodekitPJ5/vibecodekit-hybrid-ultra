@@ -67,6 +67,7 @@ triggers:
   - /vck-learn
   - /vck-retro
   - /vck-second-opinion
+  - /vck-pipeline
 paths:
   - "**/*.py"
   - "**/*.ts"

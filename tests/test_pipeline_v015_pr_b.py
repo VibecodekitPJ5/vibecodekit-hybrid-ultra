@@ -31,6 +31,9 @@ def test_session_start_hook_emits_learnings_inject_key(tmp_path: Path) -> None:
         **os.environ,
         "VIBECODEKIT_SKILL_PATH": str(SCRIPTS),
         "CLAW_PROJECT_ROOT": str(tmp_path),
+        # Isolate user scope so the developer's real ~/.vibecode/learnings.jsonl
+        # cannot leak into the subprocess (Devin Review finding on PR #6).
+        "VIBECODE_HOME": str(tmp_path / "fakehome"),
     }
     res = subprocess.run(
         [sys.executable, str(HOOKS / "session_start.py")],
@@ -62,6 +65,8 @@ def test_session_start_injects_most_recent_learnings(tmp_path: Path) -> None:
         **os.environ,
         "VIBECODEKIT_SKILL_PATH": str(SCRIPTS),
         "CLAW_PROJECT_ROOT": str(tmp_path),
+        # Isolate user scope (see test 1 above).
+        "VIBECODE_HOME": str(tmp_path / "fakehome"),
     }
     res = subprocess.run(
         [sys.executable, str(HOOKS / "session_start.py")],
@@ -90,6 +95,8 @@ def test_session_start_opt_out_with_env_var(tmp_path: Path) -> None:
         "VIBECODEKIT_SKILL_PATH": str(SCRIPTS),
         "CLAW_PROJECT_ROOT": str(tmp_path),
         "VIBECODE_LEARNINGS_INJECT": "0",
+        # Isolate user scope (see top of file).
+        "VIBECODE_HOME": str(tmp_path / "fakehome"),
     }
     res = subprocess.run(
         [sys.executable, str(HOOKS / "session_start.py")],
@@ -118,6 +125,8 @@ def test_session_start_custom_limit(tmp_path: Path) -> None:
         "VIBECODEKIT_SKILL_PATH": str(SCRIPTS),
         "CLAW_PROJECT_ROOT": str(tmp_path),
         "VIBECODE_LEARNINGS_INJECT_LIMIT": "2",
+        # Isolate user scope (see top of file).
+        "VIBECODE_HOME": str(tmp_path / "fakehome"),
     }
     res = subprocess.run(
         [sys.executable, str(HOOKS / "session_start.py")],

@@ -57,7 +57,8 @@
       "/vck-design-review",
       "/vck-learn",
       "/vck-retro",
-      "/vck-second-opinion"
+      "/vck-second-opinion",
+      "/vck-pipeline"
     ],
     "paths": [
       "**/*.py",
@@ -241,6 +242,10 @@
     {
       "name": "vck-second-opinion",
       "file": ".claude/commands/vck-second-opinion.md"
+    },
+    {
+      "name": "vck-pipeline",
+      "file": ".claude/commands/vck-pipeline.md"
     }
   ],
   "agents": [

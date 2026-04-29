@@ -113,6 +113,7 @@ class ScaffoldResult:
     files_written: tuple[str, ...]
     bytes_written: int
     success_criteria: tuple[str, ...]
+    vibecode_seeded: tuple[str, ...] = ()
 
 
 @dataclasses.dataclass(frozen=True)
@@ -206,7 +207,17 @@ class ScaffoldEngine:
 
     # -- apply ------------------------------------------------------------
     def apply(self, preset: str, target_dir: os.PathLike[str] | str,
-              stack: str, *, force: bool = False) -> ScaffoldResult:
+              stack: str, *, force: bool = False,
+              seed_vibecode: bool = True) -> ScaffoldResult:
+        """Copy the preset/stack file tree into ``target_dir``.
+
+        When ``seed_vibecode`` is true (default) the engine also seeds
+        a ``.vibecode/`` directory with placeholder files so the host
+        LLM picks up VCK-HU runtime context on first session start
+        (v0.15.0-alpha PR-C / T5).  Existing ``.vibecode/`` files are
+        never overwritten.  Pass ``seed_vibecode=False`` to skip the
+        seeding step.
+        """
         plan = self.preview(preset, stack, target_dir)
         target = plan.target_dir
         target.mkdir(parents=True, exist_ok=True)
@@ -228,6 +239,9 @@ class ScaffoldEngine:
             shutil.copy2(root / f.rel_path, dest)
             written.append(f.rel_path)
             bytes_total += f.bytes
+        seeded: tuple[str, ...] = ()
+        if seed_vibecode:
+            seeded = seed_vibecode_dir(target)
         return ScaffoldResult(
             preset=preset,
             stack=stack,
@@ -235,6 +249,7 @@ class ScaffoldEngine:
             files_written=tuple(written),
             bytes_written=bytes_total,
             success_criteria=plan.success_criteria,
+            vibecode_seeded=seeded,
         )
 
     # -- verify -----------------------------------------------------------
@@ -246,6 +261,109 @@ class ScaffoldEngine:
             if not _check_criterion(crit, target):
                 issues.append(Issue(file="-", message=f"failed: {crit}"))
         return issues
+
+
+# ---------------------------------------------------------------------------
+# .vibecode/ seed (T5 — v0.15.0-alpha PR-C)
+# ---------------------------------------------------------------------------
+#
+# Every scaffolded project gets a ``.vibecode/`` directory pre-seeded
+# with VCK-HU runtime context: an empty learnings store, an example
+# team config, and a documented classifier env file.  The host LLM
+# (Claude Code, Cursor, Devin) discovers these on session start and
+# the integration tooling (``learnings.load_recent``, ``team_mode``,
+# ``security_classifier``) finds canonical paths instead of having to
+# guess.
+#
+# Existing files are NEVER overwritten so re-running the seed is safe.
+
+VIBECODE_DIR = ".vibecode"
+
+_LEARNINGS_JSONL = ""  # Empty file — load_recent treats missing/empty as 0 rows.
+
+_TEAM_JSON_EXAMPLE = """\
+{
+  "_comment": [
+    "Rename to team.json to enable team-mode gate enforcement.",
+    "When team.json is present, /vck-ship Bước 0 will refuse to merge",
+    "until every gate listed below has run during the current cycle.",
+    "Drop or comment-out gates the team does not enforce."
+  ],
+  "team_id": "your-team-slug-here",
+  "required_gates": [
+    "/vck-review",
+    "/vck-qa-only"
+  ],
+  "learnings_required": false
+}
+"""
+
+_CLASSIFIER_ENV_EXAMPLE = """\
+# .vibecode/classifier.env.example — VCK-HU security classifier knobs.
+#
+# Copy to .vibecode/classifier.env (gitignored) and ``set -a; source ...``
+# in your shell, OR export selectively per-session.
+
+# Disable the classifier entirely (regex layer included).
+# Default: classifier auto-on since v0.15.0-alpha PR-B / T4.
+# VIBECODE_SECURITY_CLASSIFIER=0
+
+# Path to your own ONNX prompt-injection classifier.  Layer self-disables
+# when missing.
+# VIBECODE_ONNX_PROMPT_INJECTION_MODEL=/path/to/your/model.onnx
+
+# Anthropic Haiku verifier — set to enable the third ensemble layer.
+# ANTHROPIC_API_KEY=sk-ant-...
+
+# Disable session-start learnings auto-injection.  Default: ON.
+# VIBECODE_LEARNINGS_INJECT=0
+
+# Override the auto-injection limit (default 10).
+# VIBECODE_LEARNINGS_INJECT_LIMIT=20
+"""
+
+_README_BANNER = """\
+# .vibecode/
+
+This directory is **VCK-HU runtime context** for the host LLM
+(Claude Code, Cursor, Devin, …).  It is created automatically by
+``/vibe-scaffold`` and ``ScaffoldEngine.apply()`` and is safe to
+commit to the repo.
+
+| File | Purpose |
+|---|---|
+| `learnings.jsonl` | Per-project learning store. Capture with `/vck-learn`. Auto-injected at session start (opt-out: `VIBECODE_LEARNINGS_INJECT=0`). |
+| `team.json.example` | Rename to `team.json` to enforce team-mode gates in `/vck-ship` Bước 0. |
+| `classifier.env.example` | Documented env vars for the security classifier and learnings injection. |
+
+See `USAGE_GUIDE.md` §18 (Activation Cheat Sheet) for full details.
+"""
+
+
+def seed_vibecode_dir(target: Path) -> tuple[str, ...]:
+    """Seed ``target/.vibecode/`` with VCK-HU runtime placeholder files.
+
+    Returns the tuple of relative paths actually created (empty when
+    every placeholder already existed).  Existing files are never
+    overwritten — the seed is **idempotent** by design so the engine
+    can be re-run on the same target without surprises.
+    """
+    base = target / VIBECODE_DIR
+    base.mkdir(parents=True, exist_ok=True)
+    seeded: list[str] = []
+    placeholders: tuple[tuple[str, str], ...] = (
+        ("learnings.jsonl", _LEARNINGS_JSONL),
+        ("team.json.example", _TEAM_JSON_EXAMPLE),
+        ("classifier.env.example", _CLASSIFIER_ENV_EXAMPLE),
+        ("README.md", _README_BANNER),
+    )
+    for name, content in placeholders:
+        dest = base / name
+        if dest.exists():
+            continue
+        dest.write_text(content, encoding="utf-8")
+        seeded.append(f"{VIBECODE_DIR}/{name}")
+    return tuple(seeded)
 
 
 # ---------------------------------------------------------------------------
