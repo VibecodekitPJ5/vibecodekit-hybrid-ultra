@@ -391,10 +391,25 @@ def test_spawn_for_command_unknown_raises(tmp_path):
 @pytest.mark.parametrize(
     "path,expected",
     [
-        ("src/main.py", True),
-        ("a/b/c/Component.tsx", True),
-        ("README.md", True),
-        ("Cargo.toml", True),
+        # VibecodeKit overlay files — should activate
+        (".vibecode/memory/project.json", True),
+        (".claw/hooks/pre_tool_use.py", True),
+        (".claw.json", True),
+        ("SKILL.md", True),
+        ("CLAUDE.md", True),
+        ("manifest.llm.json", True),
+        ("ai-rules/vibecodekit/references/10-permission.md", True),
+        ("scripts/vibecodekit/cli.py", True),
+        ("assets/scaffolds/api-todo/manifest.json", True),
+        ("pyproject.toml", True),
+        (".claude/commands/vibe-scan.md", True),
+        (".claude/agents/coordinator.md", True),
+        ("references/07-coordinator-restriction.md", True),
+        ("tools/sync_version.py", True),
+        # User's own code — should NOT activate
+        ("src/main.py", False),
+        ("a/b/c/Component.tsx", False),
+        ("services/auth/handler.go", False),
         ("logo.png", False),
         ("image.svg", False),
         ("", False),
@@ -408,6 +423,6 @@ def test_skill_activation_by_path(path, expected):
 
 def test_skill_activation_reports_matched_glob():
     from vibecodekit import skill_discovery  # type: ignore
-    out = skill_discovery.activate_for("services/auth/handler.go")
+    out = skill_discovery.activate_for("scripts/vibecodekit/cli.py")
     assert out["activate"] is True
-    assert "**/*.go" in out["matched"]
+    assert "**/scripts/vibecodekit/**" in out["matched"]

@@ -61,21 +61,22 @@
       "/vck-pipeline"
     ],
     "paths": [
-      "**/*.py",
-      "**/*.ts",
-      "**/*.tsx",
-      "**/*.js",
-      "**/*.jsx",
-      "**/*.go",
-      "**/*.rs",
-      "**/*.java",
-      "**/*.kt",
-      "**/*.md",
-      "**/*.json",
-      "**/*.yaml",
-      "**/*.yml",
-      "**/*.toml",
-      "**/*.sql"
+      "**/.vibecode/**",
+      "**/.claw/**",
+      "**/.claw.json",
+      "**/SKILL.md",
+      "**/CLAUDE.md",
+      "**/manifest.llm.json",
+      "**/ai-rules/vibecodekit/**",
+      "**/scripts/vibecodekit/**",
+      "**/assets/plugin-manifest.json",
+      "**/assets/scaffolds/**",
+      "**/assets/templates/**",
+      "**/pyproject.toml",
+      "**/.claude/commands/**",
+      "**/.claude/agents/**",
+      "**/references/**",
+      "**/tools/**"
     ]
   },
   "commands": [
