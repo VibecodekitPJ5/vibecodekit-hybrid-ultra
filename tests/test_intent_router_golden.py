@@ -163,6 +163,56 @@ def test_intent_router_exact_match_accuracy_is_reported() -> None:
     )
 
 
+def test_clarification_trigger_overrides_low_conf_keyword() -> None:
+    """Regression test cho follow-up sau PR3 — bug "không biết làm sao
+    luôn á" → ``{BUILD}`` (chỉ vì ``"làm"`` nằm trong BUILD trigger).
+
+    Sau fix: prose chứa ``_CLARIFICATION_TRIGGERS`` (vd. ``"không biết"``,
+    ``"luôn á"``, ``"làm sao"``) PHẢI route ``Clarification`` khi
+    không có intent nào đạt ``high_conf``.  Test parametrize 4 case:
+
+    1. Pure uncertainty + 1 yếu BUILD keyword → Clarification.
+    2. Uncertainty + clear deploy keyword → Clarification (deploy
+       đơn lẻ score 0.51 < high_conf 0.55, không đủ override).  Đây
+       là behavior CONSERVATIVE đúng: user đang bí thì hỏi lại,
+       không guess.
+    3. Pipeline trigger ("làm shop online") vẫn fire FULL_BUILD bất
+       kể có clarification trigger trong prose hay không (pipeline
+       check chạy trước).
+    4. Câu rõ ràng (không có uncertainty marker) vẫn route bình
+       thường.
+    """
+    router = IntentRouter()
+
+    # Case 1 — bug nguyên thủy.
+    m = router.classify("không biết làm sao luôn á")
+    assert isinstance(m, Clarification), (
+        f"Bug regress: 'không biết làm sao luôn á' phải trả Clarification, "
+        f"router trả intents={getattr(m, 'intents', None)}"
+    )
+
+    # Case 2 — bí + deploy yếu.
+    m = router.classify("không biết deploy lên Vercel kiểu nào")
+    assert isinstance(m, Clarification), (
+        "Prose chứa marker bí + 'deploy' đơn lẻ (score < high_conf) "
+        "phải trả Clarification — router không được guess SHIP khi user "
+        "đang bí về 'kiểu nào'."
+    )
+
+    # Case 3 — pipeline trigger thắng, clarification trigger không che.
+    m = router.classify("không biết gì luôn nhưng muốn làm shop online")
+    assert not isinstance(m, Clarification), (
+        "Pipeline trigger 'shop online' phải fire FULL_BUILD bất kể "
+        "uncertainty marker."
+    )
+    assert "BUILD" in m.intents
+
+    # Case 4 — câu rõ ràng, không có uncertainty marker.
+    m = router.classify("review my code for security")
+    assert not isinstance(m, Clarification)
+    assert "VCK_REVIEW" in m.intents
+
+
 @pytest.mark.parametrize(
     "locale,min_acc",
     [

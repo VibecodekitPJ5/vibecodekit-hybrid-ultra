@@ -59,17 +59,28 @@ entries) và đo:
 
 | Metric | Định nghĩa | Giá trị hiện tại | Gate |
 |---|---|---|---|
-| `set_inclusion_accuracy` | `mean(_entry_passes(expected, actual))` — `expected ⊆ actual` khi `expected` non-empty; **`actual == ∅`** khi `expected == ∅` (clarification expected) | **97.1 %** (101/104 ở v0.16.2 sau fix vacuous-pass bug) | **≥ 75 %** (hard, không hạ ngưỡng nếu tụt) |
+| `set_inclusion_accuracy` | `mean(_entry_passes(expected, actual))` — `expected ⊆ actual` khi `expected` non-empty; **`actual == ∅`** khi `expected == ∅` (clarification expected) | **98.1 %** (102/104 ở v0.16.2 sau fix clarification-trigger override) | **≥ 75 %** (hard, không hạ ngưỡng nếu tụt) |
 | `exact_match_accuracy` | `mean(expected == actual)` — báo cáo only | **88.5 %** (92/104) | ≥ 50 % (cảnh báo super set quá rộng) |
 | Per-locale (EN, VI) | set-inclusion riêng từng locale | EN ≥ 75 %, VI ≥ 75 % | đảm bảo không lệch sang một locale |
 
-> **Lịch sử**: Baseline trước fix vacuous-pass (Devin Review báo trên
-> PR #28) là 98.1 % (102/104).  Bug: 10 entry tag `ambiguous` có
-> `expected_intents = []` luôn vacuously pass `expected.issubset(actual)`
-> (empty set là subset của mọi set) → router có thể trả intent thay vì
-> Clarification mà vẫn pass.  Sau fix, 1 entry mới hiện hình thành
-> miss (`không biết làm sao luôn á` → router trả `BUILD` thay vì
-> Clarification).  Buffer 97.1 % vs gate 75 % vẫn rất rộng.
+> **Lịch sử**:
+>
+> * Baseline trước fix vacuous-pass (Devin Review báo trên PR #28) là
+>   98.1 % (102/104).  Bug: 10 entry tag `ambiguous` có
+>   `expected_intents = []` luôn vacuously pass
+>   `expected.issubset(actual)` (empty set là subset của mọi set) →
+>   router có thể trả intent thay vì Clarification mà vẫn pass.  Sau
+>   fix #29, 1 entry mới hiện hình thành miss
+>   (`"không biết làm sao luôn á"` → router trả `{BUILD}` chỉ vì
+>   `"làm"` nằm trong BUILD trigger list) → 97.1 % (101/104).
+> * Sau follow-up clarification-trigger override (PR sau #31): thêm
+>   `_CLARIFICATION_TRIGGERS` (VN: `"không biết"`, `"luôn á"`, `"làm
+>   sao"`, `"bí quá"`, ...; EN: `"i'm stuck"`, `"no idea"`, `"not
+>   sure how"`, ...).  Khi prose match clarification trigger và không
+>   có intent đạt `high_conf`, router trả `Clarification` thay vì
+>   low-conf guess.  Accuracy quay lại **98.1 %** (102/104) với
+>   semantic đúng (entry "không biết làm sao luôn á" pass đúng nhờ
+>   route Clarification, không phải vacuous-pass).
 
 Không phải benchmark code-quality (như HumanEval) — đây thuần là
 classification accuracy của bộ phân loại keyword + multi-tier weighted

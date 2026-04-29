@@ -363,6 +363,37 @@ _HIGH_CONF = 0.55
 _LOW_CONF = 0.30
 
 
+# Help-seeking / uncertainty markers — prose chứa các phrase này nghĩa
+# là user đang BÍ và muốn được hỏi rõ, không có intent cụ thể.  Khi
+# match một trong các phrase và **không** có intent nào đạt
+# ``high_conf``, router phải trả ``Clarification`` thay vì low-conf
+# guess (vd. nhặt mỗi keyword "làm" → BUILD).  Nếu user có câu rõ
+# ràng kiểu "không biết deploy lên Vercel kiểu nào" thì keyword
+# "deploy" sẽ đạt high-conf và override clarification trigger này.
+#
+# Phát hiện qua golden eval (PR3) trên dataset
+# ``tests/fixtures/intent_router_golden.jsonl``: entry
+# ``"không biết làm sao luôn á"`` (tag ``ambiguous``,
+# ``expected_intents = []``) bị router classify thành ``{BUILD}`` chỉ
+# vì có chữ ``"làm"`` trong BUILD trigger list.
+_CLARIFICATION_TRIGGERS: tuple[str, ...] = (
+    # VN — uncertainty / help-seeking
+    "không biết", "khong biet", "không hiểu", "khong hieu",
+    "bí quá", "bi qua", "bí rồi", "bi roi", "không rõ", "khong ro",
+    "chưa rõ", "chua ro", "luôn á", "luon a",
+    "làm sao", "lam sao", "làm thế nào", "lam the nao",
+    "phải làm gì", "phai lam gi", "nên làm gì", "nen lam gi",
+    "không nắm", "khong nam", "kẹt rồi", "ket roi",
+    "rối quá", "roi qua", "lú quá", "lu qua",
+    "chỉ giúp", "chi giup", "giúp với", "giup voi",
+    # EN — uncertainty
+    "no idea", "i'm stuck", "im stuck", "i am stuck",
+    "i don't know", "i dont know", "not sure how",
+    "i'm lost", "im lost", "i am lost", "help me figure",
+    "what should i do", "what do i do",
+)
+
+
 @dataclasses.dataclass(frozen=True)
 class IntentMatch:
     intents: tuple[str, ...]
@@ -484,6 +515,17 @@ class IntentRouter:
                 matched_phrases=tuple(top_matches),
                 lang=lang,
             )
+        # 4. Help-seeking override: prose chứa marker bí/lú và không có
+        #    intent nào đạt high_conf → trả Clarification thay vì low-
+        #    conf guess.  Đặt trước nhánh "low_conf tentative match"
+        #    nhưng sau nhánh high_conf để clarification không che intent
+        #    rõ ràng (vd. "không biết deploy lên Vercel kiểu nào" vẫn
+        #    map SHIP nếu "deploy" đủ mạnh).
+        clar_triggers = [
+            t for t in _CLARIFICATION_TRIGGERS if _normalise(t) in text
+        ]
+        if clar_triggers:
+            return self._uncertain_clarification(prose, lang, clar_triggers)
         if top_score >= self.low_conf:
             # Tentative match — return it but flag low confidence.
             return IntentMatch(
@@ -542,6 +584,35 @@ class IntentRouter:
                 ("MAINTAIN", "Sửa lỗi / nâng cấp dự án có sẵn"),
                 ("ADVISOR", "Tư vấn / review kiến trúc"),
                 ("VERIFY", "Audit / kiểm tra chất lượng"),
+            ),
+        )
+
+    def _uncertain_clarification(
+        self, prose: str, lang: str, triggers: list[str]
+    ) -> Clarification:
+        """Clarification cho prose có marker bí / lú (xem
+        ``_CLARIFICATION_TRIGGERS``).  Khác ``_no_match_clarification``
+        ở chỗ message thừa nhận user đang bí và mời mô tả cụ thể, thay
+        vì hỏi "I'm not sure what you mean" (kém empathic)."""
+        snippet = prose.strip()[:50]
+        return Clarification(
+            question_vi=(
+                f"Bạn nói '{snippet}…' — mình hiểu là bạn đang bí, "
+                "nhưng chưa biết hỗ trợ gì.\n"
+                "Bạn muốn: (1) làm sản phẩm mới · (2) fix lỗi · "
+                "(3) review kiến trúc · (4) deploy?"
+            ),
+            question_en=(
+                f"You said '{snippet}…' — I get that you're stuck, "
+                "but I need a hint to help.\n"
+                "Do you want: (1) build something new · (2) fix a bug · "
+                "(3) review architecture · (4) deploy?"
+            ),
+            suggestions=(
+                ("BUILD", "Làm sản phẩm mới / Build new"),
+                ("MAINTAIN", "Fix lỗi / Bug fix"),
+                ("ADVISOR", "Review kiến trúc / Architecture review"),
+                ("SHIP", "Deploy lên production"),
             ),
         )
 
