@@ -296,9 +296,27 @@ Mỗi probe FAIL → audit gate sập → CI sập → không merge được.
 
 ## 5. Verification plan
 
+> **Post-implementation note (v0.15.4):** the targets below were the
+> **aspirational figures from the v0.14.1 proposal**.  Actuals as
+> landed:
+>
+> * pytest — proposal target ≥ 555; **actual 500** at v0.15.4
+>   (473 baseline + 12 from PR-1/T1-T3-tooling + 15 from PR-2/T4-completion).
+>   The proposal estimate of "+19 cho T1-T7" turned out to be high; the
+>   real wiring tasks added ~27 tests across PR-1 + PR-2 because some
+>   probes shared fixtures.
+> * conformance audit — proposal target 81/81; **actual 87/87** at
+>   v0.15.4 (77 baseline + 4 from T9 in v0.15.0 + 4 from PR-A invariant
+>   guards + 2 from PR-2/T4-completion).
+> * Release matrix L1+L2+L3 + CI 3.9/3.11/3.12 — both PASS as planned.
+> * Smoke tests — all 5 still apply at v0.15.4 (`/vck-cso` now runs the
+>   classifier as a Phase 0 pre-scan, `/vck-ship` runs `team_mode`
+>   gate + `eval_select` test selection, `/vck-pipeline` dispatches
+>   pipelines A/B/C).
+
 ```
-1. pytest                        : ≥ 555 passed (536 + ~19 cho T1-T7)
-2. conformance audit             : 81/81 @ 100 % (77 + 4 từ T9)
+1. pytest                        : ≥ 555 passed (536 + ~19 cho T1-T7)   ← aspirational, see note above
+2. conformance audit             : 81/81 @ 100 % (77 + 4 từ T9)         ← aspirational, see note above
 3. release matrix L1+L2+L3       : PASS
 4. CI 3.9 / 3.11 / 3.12          : ✓
 5. Smoke test thủ công           :

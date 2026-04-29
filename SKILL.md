@@ -1,6 +1,6 @@
 ---
 name: vibecodekit-hybrid-ultra
-version: 0.15.3
+version: 0.15.4
 description: >-
   Full Agentic-OS overlay for Claude Code / Devin / Cursor projects with
   the VIBECODE-MASTER methodology layer on top.  Keeps 100 % parity
@@ -99,9 +99,14 @@ hooks:
       command: "python3 -m vibecodekit.cli compact"
 ---
 
-# VibecodeKit Hybrid Ultra — current: **v0.11.4.1**
+# VibecodeKit Hybrid Ultra — current: **v0.15.4**
 
-## v0.11.4.1 patch — root-safe tests + canonical gate
+For the canonical version history see `CHANGELOG.md`; the per-version
+sections below document **how the kit evolved** — each subsection
+describes when a subsystem was originally introduced, not the version
+it currently runs.
+
+## v0.11.4.1 patch — root-safe tests + canonical gate (historical)
 
 Test-harness and release-gate polish only; runtime bit-identical to
 v0.11.4.  Canonical release gate moving forward is:
@@ -192,12 +197,12 @@ Closes the structural wiring gaps surfaced by the v0.11.2 deep-dive:
   Exposed via `methodology.COPY_PATTERNS` (9) + `COPY_PATTERNS_VN` (8).
 * Conformance audit at that time expanded to **50 probes** at 100 %
   threshold (probes #48/#49/#50 added).  Current release runs the
-  53-probe audit — see `CHANGELOG.md` for the per-version delta.
+  87-probe audit — see `CHANGELOG.md` for the per-version delta.
 
 > 📌 The table and prose below describe **how the kit evolved** — each row
 > lists the version a subsystem was *originally introduced*, not the version
-> it currently runs.  The shipping runtime is **v0.11.4.1**; every subsystem
-> below is active, hardened, and covered by the 53-probe conformance audit
+> it currently runs.  The shipping runtime is **v0.15.4**; every subsystem
+> below is active, hardened, and covered by the 87-probe conformance audit
 > (100 % parity) plus supporting tests.  See §"v0.10.x additions" near
 > the bottom of this file for what changed since v0.9, and `CHANGELOG.md`
 > for the full per-version delta.
@@ -226,8 +231,10 @@ release:
 | L | Structured notifications (lock) |      v0.9 | `task_runtime.py`     | 30    |
 
 The conformance audit (`python -m vibecodekit.cli audit`) now runs
-**53 behaviour-based probes** (30 OS + methodology + packaging/wiring)
-and reaches **100 % parity** out of the box on **v0.11.4.1**.  The table above shows the
+**87 behaviour-based probes** at v0.15.4 (30 OS + methodology +
+packaging/wiring + integration invariants) and reaches
+**100 % parity** out of the box on the current release (canonical
+count: see `python -m vibecodekit.conformance_audit`).  The table above shows the
 *originally-introduced-in* version of each subsystem; all rows remain
 active and have been re-tested on every subsequent release.
 

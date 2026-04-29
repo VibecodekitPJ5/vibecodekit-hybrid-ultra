@@ -19,14 +19,14 @@
 
 ## Con đường A — ChatGPT-only (0 cài đặt)
 
-1. Tải file `vibecodekit-hybrid-ultra-v0.11.4.1-skill.zip`.
+1. Tải file `vibecodekit-hybrid-ultra-vX.Y.Z-skill.zip`.
 2. Mở một ChatGPT conversation mới (GPT-4/4o/5).
 3. Kéo–thả file zip vào khung chat.
 4. Gửi tin nhắn:
 
    ```
    Bạn là "Chủ thầu" trong hệ VIBECODE-MASTER. Tôi đính kèm skill
-   bundle vibecodekit-hybrid-ultra v0.11.4.1. Hãy giải nén, đọc SKILL.md,
+   bundle vibecodekit-hybrid-ultra vX.Y.Z. Hãy giải nén, đọc SKILL.md,
    reference 29 (RRI), 30 (VIBECODE-MASTER). Sau đó chạy /vibe-scan cho dự án:
 
    "<mô tả dự án 2-3 câu>"
@@ -47,14 +47,14 @@ tế trên máy mình.
 
 ```bash
 # 1. Giải nén
-unzip vibecodekit-hybrid-ultra-v0.11.4.1-skill.zip -d ~/.vibecode/
+unzip vibecodekit-hybrid-ultra-vX.Y.Z-skill.zip -d ~/.vibecode/
 
 # 2. Xuất PYTHONPATH (thêm vào ~/.bashrc / ~/.zshrc để không phải gõ lại)
 export PYTHONPATH=~/.vibecode/vibecodekit-hybrid-ultra/scripts
 
 # 3. Test thử một lệnh
 python -m vibecodekit.cli audit
-# → kỳ vọng: parity: 100.00%   (53/53, threshold 85%)
+# → kỳ vọng: parity: 100.00%   (87/87, threshold 85%) at v0.15.4
 ```
 
 Dùng `vibe rri-t reports/testing.jsonl` sau mỗi sprint để kiểm tra cổng
@@ -67,7 +67,7 @@ release.  Format JSONL xem `USAGE_GUIDE.md §8`.
 ```bash
 # 1. Giải nén update-package vào thư mục dự án (KHÔNG phải home)
 cd <my-project>
-unzip ~/Downloads/vibecodekit-hybrid-ultra-v0.11.4.1-update-package.zip -d .
+unzip ~/Downloads/vibecodekit-hybrid-ultra-vX.Y.Z-update-package.zip -d .
 
 # 2. Nếu dùng Claude Code / Claw Code:
 claude-code
@@ -82,7 +82,7 @@ codex --system-file ai-rules/vibecodekit/SKILL.md "/vibe-scan"
 # Hoặc chuyển sang `.cursor/rules/` bằng script nhỏ, xem USAGE_GUIDE §2.2
 ```
 
-Bạn sẽ thấy ngay 26 slash command mới: `/vibe-scan`, `/vibe-scaffold`, `/vibe-ship`,
+Bạn sẽ thấy ngay 41 slash command mới (25 `/vibe-*` + 16 `/vck-*`): `/vibe-scan`, `/vibe-scaffold`, `/vibe-ship`,
 `/vibe-blueprint`, ..., `/vibe-audit`.
 
 ---
@@ -96,7 +96,7 @@ pytest tests/ -q        # → all actionable tests pass
 
 # 2. Conformance audit
 PYTHONPATH=scripts python -m vibecodekit.conformance_audit
-# → parity: 100.00%   (53/53, threshold 85%)
+# → parity: 100.00%   (87/87, threshold 85%) at v0.15.4
 
 # 3. Permission engine (phải chặn lệnh nguy hiểm)
 PYTHONPATH=scripts python -m vibecodekit.cli permission "rm -rf /"

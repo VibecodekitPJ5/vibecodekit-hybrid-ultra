@@ -1,4 +1,4 @@
-"""Auto-commit hook for VibecodeKit (v0.11.0, Phase α — F3).
+"""Auto-commit hook for VibecodeKit (introduced v0.11.0 Phase α — F3, current at v0.15.4).
 
 Borrowed pattern from taw-kit (`hooks/post-tool-auto-commit.sh`) and
 strengthened with:

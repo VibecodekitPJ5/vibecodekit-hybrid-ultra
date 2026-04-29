@@ -11,7 +11,7 @@ VibecodeKit Hybrid Ultra (VCK-HU) is released under the MIT license (see `LICENS
 
 ### Skills inspired by gstack
 
-The following slash-commands shipped under `update-package/.claude/commands/` were inspired by the matching gstack skill, then **rewritten in Vietnamese-first** for the VCK-HU audience and **integrated** with VCK-HU's permission engine, intent router, and 53-probe audit:
+The following slash-commands shipped under `update-package/.claude/commands/` were inspired by the matching gstack skill, then **rewritten in Vietnamese-first** for the VCK-HU audience and **integrated** with VCK-HU's permission engine, intent router, and 87-probe audit (at v0.15.4):
 
 - `/vck-cso` — adapted from `gstack/cso/SKILL.md.tmpl`
 - `/vck-review` — adapted from `gstack/review/SKILL.md.tmpl`

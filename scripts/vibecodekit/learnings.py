@@ -171,7 +171,7 @@ def load_recent(limit: int = 10,
     into the host LLM (auto-on by default; opt-out with
     ``VIBECODE_LEARNINGS_INJECT=0``).
 
-    ``scopes`` (added v0.15.1) restricts the result to a subset of the
+    ``scopes`` (added v0.15.3) restricts the result to a subset of the
     canonical scope tuple ``("user", "project", "team")``.  When
     ``None`` (default) all scopes are included, preserving the v0.15.0
     behaviour.  Unknown scope labels are silently dropped.
@@ -198,7 +198,7 @@ def recent_for_prompt(limit: int = 10,
 
     The format is intentionally compact — one bullet per learning,
     prefixed with ``[scope]`` and a tags inline so the LLM has just
-    enough context to reference prior decisions.  Added in v0.15.1
+    enough context to reference prior decisions.  Added in v0.15.3
     to close the markdown-addendum gap from the v0.15.0 plan T3.
     """
     items = load_recent(limit=limit, scopes=scopes, root=root, home=home)

@@ -10,7 +10,23 @@ import json
 import os
 import sys
 
-banner = "VibecodeKit v0.11.2 engaged"
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _read_overlay_version() -> str:
+    for candidate in (
+        os.path.join(_HERE, "..", "..", "VERSION"),
+        os.path.join(_HERE, "..", "..", "..", "VERSION"),
+    ):
+        try:
+            with open(candidate, encoding="utf-8") as fh:
+                return fh.read().strip()
+        except OSError:
+            continue
+    return "unknown"
+
+
+banner = "VibecodeKit v{} engaged".format(_read_overlay_version())
 auto_writeback = {"ran": False, "reason": "skipped"}
 learnings_inject = {"injected": 0, "reason": "skipped", "items": []}
 
@@ -52,7 +68,7 @@ except Exception as exc:  # noqa: BLE001
 # subset of "user,project,team"; default = all scopes).  Failures are
 # silent — never break session start.
 #
-# v0.15.1 (Bug #4) — also emit a ready-to-paste ``addendum`` markdown
+# v0.15.3 (Bug #4) — also emit a ready-to-paste ``addendum`` markdown
 # string so hosts that prefer prompt-injection (Claude Code, Cursor)
 # don't need to re-format the JSON ``items`` themselves.
 if os.environ.get("VIBECODE_LEARNINGS_INJECT", "1") != "0":
