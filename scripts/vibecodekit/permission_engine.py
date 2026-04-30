@@ -25,6 +25,7 @@ import shlex
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from ._audit_log import record_attempt as _record_audit_attempt
 from ._logging import get_logger
 from .denial_store import DenialStore
 
@@ -286,6 +287,104 @@ _COMPILED_DANGEROUS = [(re.compile(p), reason) for p, reason in _DANGEROUS_PATTE
 
 
 # ---------------------------------------------------------------------------
+# Layer 4b — STRICT DENY rules (PR4, gstack-port)
+# ---------------------------------------------------------------------------
+# 9 pattern cao-rủi-ro được gắn `rule_id` ổn định + `severity` để
+# audit-log có thể trace; kiểm tra TRƯỚC khi fallback "ask".  Nhiều
+# pattern đã được ``_DANGEROUS_PATTERNS`` bắt dưới dạng blocked, nhưng
+# chưa có metadata ``rule_id``.  Layer 4b chạy đầu tiên trong ``decide()``
+# để attach metadata + write audit log entry.
+
+_STRICT_DENY_RULES: List[Tuple[str, str, str, str]] = [
+    # (pattern, reason, rule_id, severity)
+    (r"\bchmod\s+(0?7{3,4})\s+/(\s|$)",
+     "world-writable chmod on /", "R-CHMOD-WORLD-ROOT-001", "high"),
+    (r"(^|[\s;&|`])shutdown\s",
+     "host shutdown", "R-SHUTDOWN-HOST-002", "high"),
+    (r"(^|[\s;&|`])history\s+-c\b",
+     "shell history wipe (cover tracks)", "R-HISTORY-WIPE-003", "high"),
+    (r"(^|[\s;&|`])rm\b[^\n;&|`]*\$\(",
+     "rm with command substitution", "R-RM-CMD-SUBST-004", "high"),
+    (r"\bkubectl\s+delete\s+(--all\b|-A\b|namespace\b)",
+     "kubectl cluster-wide delete", "R-KUBECTL-DELETE-ALL-005", "high"),
+    (r"\bterraform\s+destroy\b",
+     "terraform destroy — infra teardown", "R-TERRAFORM-DESTROY-006", "high"),
+    (r"\baws\s+s3\s+rm\s+[^\n]*--recursive\b",
+     "aws s3 rm --recursive bulk delete", "R-AWS-S3-RM-RECURSIVE-007", "high"),
+    (r"(?i)\b(drop|truncate)\s+(table|database)\b",
+     "SQL drop/truncate table/database", "R-SQL-DATA-LOSS-008", "high"),
+    (r"\bgcloud\s+compute\s+instances\s+delete\b",
+     "gcloud compute instances delete", "R-GCP-VM-DELETE-009", "high"),
+]
+
+_COMPILED_STRICT_DENY = [
+    (re.compile(p), reason, rule_id, severity)
+    for p, reason, rule_id, severity in _STRICT_DENY_RULES
+]
+
+
+def _match_strict_deny(text: str) -> Optional[Tuple[str, str, str]]:
+    """Return ``(rule_id, reason, severity)`` nếu khớp, else None."""
+    for rx, reason, rule_id, severity in _COMPILED_STRICT_DENY:
+        if rx.search(text):
+            return rule_id, reason, severity
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Layer 4c — Safe-exception cho rm -rf build artifact (PR4)
+# ---------------------------------------------------------------------------
+# Port từ gstack ``careful/bin/check-careful.sh``.  Tránh nuisance
+# ``ask`` khi user clean workspace bằng ``rm -rf node_modules dist``.
+
+RM_RF_SAFE_TARGETS = frozenset({
+    "node_modules", ".next", "dist", "__pycache__", ".cache",
+    "build", ".turbo", "coverage", ".pytest_cache", ".mypy_cache",
+    ".ruff_cache", ".venv", "venv",
+})
+
+# Match `rm` với ít nhất 1 flag recursive+force, capture tail.
+_RM_RF_PREFIX_RX = re.compile(
+    r"^\s*rm\s+("
+    r"-[a-zA-Z]*r[a-zA-Z]*f[a-zA-Z]*"       # -rf, -Rf, -rfv
+    r"|-[a-zA-Z]*f[a-zA-Z]*r[a-zA-Z]*"      # -fr, -Fr, -fvr
+    r"|-r[a-zA-Z]*\s+-f[a-zA-Z]*"            # -r -f
+    r"|-f[a-zA-Z]*\s+-r[a-zA-Z]*"            # -f -r
+    r"|--recursive\s+--force"
+    r"|--force\s+--recursive"
+    r")\b\s*(.+)$"
+)
+
+
+def _is_safe_rm_rf(cmd: str) -> bool:
+    """True if cmd là `rm -rf <build-artifact(s)>`, tất cả target đều
+    nằm trong ``RM_RF_SAFE_TARGETS`` (cho phép prefix ``./`` hoặc
+    ``*/``)."""
+    m = _RM_RF_PREFIX_RX.match(cmd.strip())
+    if not m:
+        return False
+    tail = m.group(2).strip()
+    # Không cho phép shell metachar nào (guard command substitution smuggling).
+    if any(c in tail for c in "$`;&|<>\"'"):
+        return False
+    targets = tail.split()
+    if not targets:
+        return False
+    for raw in targets:
+        # Skip any trailing flag-like tokens.
+        if raw.startswith("-"):
+            return False
+        norm = raw.rstrip("/")
+        # Chấp nhận "./<name>" và "*/<name>".
+        for prefix in ("./", "*/"):
+            if norm.startswith(prefix):
+                norm = norm[len(prefix):]
+        if norm not in RM_RF_SAFE_TARGETS:
+            return False
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
@@ -359,6 +458,17 @@ def classify_cmd(cmd: str) -> Tuple[ClassName, str]:
     if not text:
         return "blocked", "empty command"
 
+    # Layer 4c — Safe-exception cho rm -rf build artifact (PR4).
+    # Phải chạy trước Layer 4 để bypass ``destructive recursive delete``.
+    if _is_safe_rm_rf(text):
+        return "mutation", "safe rm -rf of build artifact"
+
+    # Layer 4b — Strict-deny rules (PR4, gstack-port).  Chạy trước
+    # Layer 4 để metadata rule_id được attach trong ``decide()``.
+    strict = _match_strict_deny(text)
+    if strict:
+        return "blocked", strict[1]
+
     # Layer 4 — DANGEROUS patterns on the raw command
     for rx, reason in _COMPILED_DANGEROUS:
         if rx.search(text):
@@ -368,6 +478,14 @@ def classify_cmd(cmd: str) -> Tuple[ClassName, str]:
     worst: Tuple[int, ClassName, str] = (0, "read_only", "default")
     rank = {"read_only": 0, "verify": 1, "mutation": 2, "high_risk": 3, "blocked": 4}
     for sub in subs:
+        if _is_safe_rm_rf(sub):
+            c, r = "mutation", "safe rm -rf of build artifact"
+            if rank[c] > rank[worst[1]]:
+                worst = (rank[c], c, r)
+            continue
+        strict = _match_strict_deny(sub)
+        if strict:
+            return "blocked", strict[1]
         for rx, reason in _COMPILED_DANGEROUS:
             if rx.search(sub):
                 return "blocked", reason
@@ -447,20 +565,43 @@ def decide(
 
     # Layer 4 — dangerous patterns always deny (even under bypass/yolo unless --unsafe).
     if cls == "blocked":
+        # Layer 4b metadata lookup — re-run strict match on normalised
+        # command to attach rule_id/severity (PR4).  Fallback severity=
+        # "medium" nếu không khớp pattern 4b (hit từ layer 4 chung).
+        _strict = _match_strict_deny(_normalise_unicode(cmd).strip())
+        rule_id, severity = (
+            (_strict[0], _strict[2]) if _strict else (None, "medium")
+        )
         if mode == "bypass" and allow_unsafe_yolo:
             _log.warning(
                 "permission_decision",
                 extra={"decision": "allow", "class_": cls, "mode": mode,
-                       "trigger": "bypass_unsafe_override"},
+                       "trigger": "bypass_unsafe_override",
+                       "rule_id": rule_id, "severity": severity},
             )
-            return Decision("allow", cls, reason + " (bypass --unsafe override)", mode).to_dict()
+            return Decision(
+                "allow", cls, reason + " (bypass --unsafe override)",
+                mode,
+                extra={"rule_id": rule_id, "severity": severity}
+                if rule_id else {"severity": severity},
+            ).to_dict()
         store.record_denial(cmd, reason)
+        _record_audit_attempt(
+            decision="deny",
+            rule_id=rule_id or "R-DANGEROUS-PATTERN-FALLBACK",
+            cmd=cmd, mode=mode, severity=severity,
+        )
         _log.warning(
             "permission_decision",
             extra={"decision": "deny", "class_": cls, "mode": mode,
-                   "trigger": "dangerous_pattern"},
+                   "trigger": "strict_deny" if rule_id else "dangerous_pattern",
+                   "rule_id": rule_id, "severity": severity},
         )
-        return Decision("deny", cls, reason, mode).to_dict()
+        return Decision(
+            "deny", cls, reason, mode,
+            extra={"rule_id": rule_id, "severity": severity}
+            if rule_id else {"severity": severity},
+        ).to_dict()
 
     # Layer 3 — user rules
     if rules:
