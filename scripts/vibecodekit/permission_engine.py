@@ -22,8 +22,9 @@ from __future__ import annotations
 
 import re
 import shlex
+import warnings
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Literal, Optional, Tuple
 
 from ._audit_log import record_attempt as _record_audit_attempt
 from ._logging import get_logger
@@ -536,7 +537,15 @@ def decide(
 
     ``rules``: optional list of user rules like
     ``[{"type":"exact","command":"npm test","decision":"allow"}]``.
+
+    .. deprecated:: 0.17.0
+        Dict-return shape là deprecated; dùng :func:`decide_typed` để
+        lấy :class:`PermissionDecision` dataclass.  Removal target:
+        v1.0.0.  DeprecationWarning được emit 1 lần/process qua
+        :mod:`warnings` (default filter ẩn — bật ``-W default`` hoặc
+        ``PYTHONWARNINGS=default::DeprecationWarning`` để thấy).
     """
+    _warn_decide_deprecation_once()
     if mode not in MODES:
         mode = "default"
     cls, reason = classify_cmd(cmd)
@@ -641,6 +650,135 @@ def decide(
 
     # default → ask
     return Decision("ask", cls, reason, mode).to_dict()
+
+
+# ---------------------------------------------------------------------------
+# Typed public API (PR5) — ``PermissionDecision`` + ``decide_typed()``
+# ---------------------------------------------------------------------------
+# Dual-shape additive contract:
+#
+# * ``decide()`` (legacy) trả về ``dict[str, Any]`` — shape không đổi để
+#   không phá downstream caller.  Emit ``DeprecationWarning`` một lần
+#   per process qua ``warnings.warn(..., stacklevel=2)``.
+# * ``decide_typed()`` (preferred) trả về frozen ``PermissionDecision``
+#   dataclass với fields ổn định.
+#
+# Removal target cho legacy dict return: v1.0.0 (documented ở
+# ``CHANGELOG.md``).  Trước khi remove: user phải migrate call-site
+# sang ``decide_typed()``.
+
+
+DecisionLiteral = Literal["allow", "ask", "deny"]
+SeverityLiteral = Literal["low", "medium", "high"]
+
+
+@dataclass(frozen=True)
+class PermissionDecision:
+    """Typed, hashable public API cho kết quả classifier.
+
+    Parity 1-1 với ``dict`` trả về bởi ``decide()``; thêm field
+    ``matched_rule_id`` và ``severity`` làm first-class attribute
+    (trước đó chỉ có trong ``extra``).
+
+    Invariants:
+
+    * ``decision in {"allow", "ask", "deny"}``.
+    * ``severity in {"low", "medium", "high"}``; "low" cho non-blocked,
+      "medium" cho dangerous-pattern fallback, "high" cho strict-deny.
+    * ``matched_rule_id`` là rule_id ổn định (``R-*``) chỉ khi match
+      Layer 4b strict-deny; ``None`` cho mọi quyết định khác.
+    * Frozen → hashable → có thể dùng làm dict key / set member cho
+      downstream audit aggregation.
+    """
+
+    decision: DecisionLiteral
+    reason: str
+    severity: SeverityLiteral = "low"
+    matched_rule_id: Optional[str] = None
+
+    def as_legacy_dict(self) -> Dict[str, object]:
+        """Return shape tương đương ``decide()`` (bỏ ``class``/``mode``)."""
+        d: Dict[str, object] = {
+            "decision": self.decision,
+            "reason": self.reason,
+        }
+        extra: Dict[str, object] = {"severity": self.severity}
+        if self.matched_rule_id:
+            extra["rule_id"] = self.matched_rule_id
+        d["extra"] = extra
+        return d
+
+
+_DECIDE_DEPRECATION_WARNED = False
+
+
+def _warn_decide_deprecation_once() -> None:
+    global _DECIDE_DEPRECATION_WARNED
+    if _DECIDE_DEPRECATION_WARNED:
+        return
+    _DECIDE_DEPRECATION_WARNED = True
+    warnings.warn(
+        "vibecodekit.permission_engine.decide() sẽ tiếp tục hoạt động "
+        "nhưng dict-return shape là deprecated; dùng decide_typed() cho "
+        "PermissionDecision dataclass.  Removal target: v1.0.0.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def decide_typed(
+    cmd: str,
+    mode: PermissionMode = "default",
+    root: str = ".",
+    rules: Optional[List[Dict[str, str]]] = None,
+    allow_unsafe_yolo: bool = False,
+) -> PermissionDecision:
+    """Typed wrapper quanh ``decide()``; preferred public API (PR5).
+
+    Shape contract ổn định, KHÔNG phụ thuộc key presence trong dict:
+
+        >>> d = decide_typed("rm -rf /")
+        >>> d.decision
+        'deny'
+        >>> d.severity
+        'medium'  # dangerous-pattern fallback
+
+        >>> d2 = decide_typed("terraform destroy")
+        >>> d2.matched_rule_id
+        'R-TERRAFORM-DESTROY-006'
+    """
+    raw = decide(
+        cmd, mode=mode, root=root, rules=rules,
+        allow_unsafe_yolo=allow_unsafe_yolo,
+    )
+    decision_value = str(raw.get("decision", "ask"))
+    if decision_value not in ("allow", "ask", "deny"):
+        decision_value = "ask"
+    extra_any = raw.get("extra") or {}
+    extra: Dict[str, object] = extra_any if isinstance(extra_any, dict) else {}
+    sev = str(extra.get("severity", "low"))
+    if sev not in ("low", "medium", "high"):
+        sev = "low"
+    rid_raw = extra.get("rule_id")
+    rid = str(rid_raw) if isinstance(rid_raw, str) else None
+    return PermissionDecision(
+        decision=decision_value,  # type: ignore[arg-type]
+        reason=str(raw.get("reason", "")),
+        severity=sev,  # type: ignore[arg-type]
+        matched_rule_id=rid,
+    )
+
+
+__all__ = [
+    "PermissionMode", "MODES",
+    "ClassName", "classify_cmd",
+    "Decision", "decide",
+    # PR5 — preferred typed API.
+    "PermissionDecision", "decide_typed",
+    "DecisionLiteral", "SeverityLiteral",
+    # Strict-deny catalog (PR4).
+    "RM_RF_SAFE_TARGETS",
+]
 
 
 def _rule_matches(rule: Dict[str, str], cmd: str) -> bool:

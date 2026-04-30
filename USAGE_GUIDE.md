@@ -2178,6 +2178,32 @@ vibe permission "echo hi" --mode plan --unsafe        # → allow (force bypass 
 - Probe `24_denial_concurrency_safe` — denial store concurrent-safe
 - Probe `58_browser_permission_routed` — browser tool also routed
 
+### 24.5 Typed API (preferred, PR5+)
+
+Khuyến nghị dùng `decide_typed()` thay vì `decide()` cho code mới.
+Dataclass shape stable, hashable, có first-class `matched_rule_id`
++ `severity`:
+
+```python
+from vibecodekit.permission_engine import decide_typed, PermissionDecision
+
+d: PermissionDecision = decide_typed("terraform destroy")
+assert d.decision == "deny"
+assert d.matched_rule_id == "R-TERRAFORM-DESTROY-006"
+assert d.severity == "high"
+
+# Hashable — có thể aggregate:
+from collections import Counter
+stats = Counter(decide_typed(cmd) for cmd in cmds)
+```
+
+**Migration:** `decide()` cũ (dict return) vẫn hoạt động trọn vẹn
+nhưng sẽ được remove ở v1.0.0.  `decide()` emit `DeprecationWarning`
+một lần/process qua `warnings` module (default filter ẩn; bật
+`PYTHONWARNINGS=default::DeprecationWarning` hoặc `-W default` để
+thấy).  Dùng `PermissionDecision.as_legacy_dict()` cho layer
+adapter nếu downstream chưa migrate xong.
+
 ---
 
 ## 25. Release-gate strategy

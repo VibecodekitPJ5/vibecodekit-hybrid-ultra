@@ -10,6 +10,34 @@ and [Semver](https://semver.org/).
 > invariants.  They do **not** represent external quality benchmarks.
 > See [`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md) for details.
 
+## [Unreleased]
+
+### Added
+- **Typed public API** (`vibecodekit.permission_engine`, PR5):
+  - `PermissionDecision` frozen dataclass — fields `decision`,
+    `reason`, `severity`, `matched_rule_id`; hashable, usable as
+    dict key / set member.
+  - `decide_typed(cmd, mode, root, rules, allow_unsafe_yolo) ->
+    PermissionDecision` — preferred API, stable field contract.
+  - `PermissionDecision.as_legacy_dict()` — helper for downstream
+    still coupled to dict shape.
+  - Export qua `permission_engine.__all__`.
+
+### Deprecated
+- `vibecodekit.permission_engine.decide()` dict-return shape —
+  tiếp tục hoạt động nhưng emit `DeprecationWarning` 1 lần/process
+  (default filter ẩn; bật `-W default` hoặc
+  `PYTHONWARNINGS=default::DeprecationWarning` để quan sát).
+  **Removal target: v1.0.0** — migrate sang `decide_typed()`.
+
+### Notes
+- `scaffold_engine.ScaffoldPlan` / `ScaffoldResult` — đã là frozen
+  dataclass từ trước PR5; không thêm wrapper (smoke-check có trong
+  `tests/test_public_api_dataclass.py`).
+- Không breaking-change shape public hàm nào.  Dual-shape contract:
+  legacy caller tiếp tục chạy không chỉnh sửa; caller mới nhận lợi
+  ích kiểu từ dataclass.
+
 ## [0.16.2] — USAGE_GUIDE rewrite (full feature catalog)
 
 Doc-only release.  Rewrites `USAGE_GUIDE.md` (and the bundled
