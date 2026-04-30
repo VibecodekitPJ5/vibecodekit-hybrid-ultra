@@ -158,8 +158,9 @@ def test_deprecated_replaced_by_targets_are_not_themselves_deprecated(
 def test_known_deprecate_pairs_are_marked(
     parsed_commands: dict[str, dict[str, str]],
 ) -> None:
-    """C\u1ed1 \u0111\u1ecbnh 4 c\u1eb7p deprecate \u0111\u00e3 thi\u1ebft k\u1ebf trong PR4 \u0111\u1ec3 tr\u00e1nh
-    fall-back im l\u1eb7ng (vd. ai \u0111\u00f3 x\u00f3a frontmatter \u0111i)."""
+    """C\u1ed1 \u0111\u1ecbnh 5 c\u1eb7p deprecate (4 t\u1eeb PR4 + 1 t\u1eeb PR5)
+    \u0111\u1ec3 tr\u00e1nh fall-back im l\u1eb7ng (vd. ai \u0111\u00f3 x\u00f3a
+    frontmatter \u0111i ho\u1eb7c revert v\u1ec1 baseline 4-c\u1eb7p sau merge)."""
     expected = {
         "/vibe-ship": "/vck-ship",
         "/vibe-rri-t": "/vibe-rri",
