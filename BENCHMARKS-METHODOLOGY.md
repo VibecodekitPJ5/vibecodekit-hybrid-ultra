@@ -122,6 +122,51 @@ Test `tests/test_benchmarks_intent_dump.py` ép buộc:
 - Schema hợp lệ (đủ key bắt buộc, kiểu dữ liệu đúng).
 - `set_inclusion_accuracy` ≥ 0.75 (cùng gate golden eval).
 
+## 4b. Observability (PR2 — structured logging)
+
+VibecodeKit xuất structured log cho mọi event security-critical — decision
+của ``permission_engine``, scrub của ``hook_interceptor``, tool-call cycle
+của ``tool_executor``, denial append của ``denial_store``.  Log được emit
+qua helper ``scripts/vibecodekit/_logging.py`` (stdlib-only, không thêm
+dependency) và ghi ra ``stderr`` (``stdout`` vẫn là contract của CLI
+``print()``).
+
+Env switches:
+
+| Env | Default | Ý nghĩa |
+|---|---|---|
+| ``VIBECODE_LOG_LEVEL`` | ``INFO`` | ``DEBUG`` / ``INFO`` / ``WARNING`` / ``ERROR`` / ``CRITICAL``; invalid → ``INFO``. |
+| ``VIBECODE_LOG_JSON`` | unset | ``=1`` xuất JSON 1-line cho mỗi record (tiện ``jq`` / ELK / Loki pipeline). |
+
+Ví dụ pipe log sang ``jq``:
+
+```bash
+VIBECODE_LOG_LEVEL=DEBUG VIBECODE_LOG_JSON=1 \
+  PYTHONPATH=./scripts python3 -m vibecodekit.cli demo 2>&1 1>/dev/null \
+  | jq 'select(.name == "vibecodekit.permission_engine")'
+```
+
+Invariants:
+
+- ``logger.propagate = False`` cho mỗi logger tạo qua helper — tránh bão
+  log khi downstream cài root handler (Sentry, DataDog, syslog).
+- ``print()`` trong CLI entrypoint (``cli.py``, ``demo.py``, và ``_main``
+  của module ``permission_engine`` / ``tool_executor`` / …) **không** bị
+  đổi — chúng là contract stdout của ``python -m vibecodekit.<mod>``.
+- JSON formatter thuần ``json.dumps`` stdlib — **không** import
+  ``structlog`` / ``python-json-logger`` (giữ DNA Python-pure).
+
+Event catalog (stable names, mở rộng theo release):
+
+| Logger | Event | Level | Khi xảy ra |
+|---|---|---|---|
+| ``vibecodekit.permission_engine`` | ``permission_decision`` | INFO/WARNING | Mỗi deny / denial-fatigue ask / bypass-unsafe override. |
+| ``vibecodekit.denial_store`` | ``denial_recorded`` | DEBUG | Mỗi lần append denial vào store (JSONL + fcntl lock). |
+| ``vibecodekit.hook_interceptor`` | ``hook_env_scrubbed`` | INFO | Khi env subprocess bị scrub secret. |
+| ``vibecodekit.tool_executor`` | ``tool_plan_start`` / ``tool_plan_end`` | INFO | Entry / exit của ``execute_blocks``. |
+
+---
+
 ## 5. Roadmap for external benchmarks (Phase 2)
 
 We plan to add external benchmark runs to provide ground-truth quality

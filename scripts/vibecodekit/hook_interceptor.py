@@ -24,6 +24,10 @@ import subprocess
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional
 
+from ._logging import get_logger
+
+_log = get_logger("vibecodekit.hook_interceptor")
+
 # 26 lifecycle events mirroring Claude Code (Giải phẫu §10.3).  Event names
 # use snake_case (Python convention); their Claude Code counterparts are
 # documented in references/14-plugin-extension.md.
@@ -84,7 +88,11 @@ _VALUE_SECRET_PATTERNS = [
 def _filter_env(env: Dict[str, str]) -> Dict[str, str]:
     if os.environ.get("VIBECODE_HOOK_ALLOW_SECRETS") == "1":
         return env
-    return {k: v for k, v in env.items() if not _SECRET_RX.search(k)}
+    filtered = {k: v for k, v in env.items() if not _SECRET_RX.search(k)}
+    dropped = len(env) - len(filtered)
+    if dropped:
+        _log.info("hook_env_scrubbed", extra={"dropped_count": dropped})
+    return filtered
 
 
 def _scrub_str(text: str) -> str:

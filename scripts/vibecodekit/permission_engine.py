@@ -25,7 +25,10 @@ import shlex
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from ._logging import get_logger
 from .denial_store import DenialStore
+
+_log = get_logger("vibecodekit.permission_engine")
 
 # ---------------------------------------------------------------------------
 # Mode definitions (Claude Code §5.4)
@@ -424,19 +427,39 @@ def decide(
     # Layer 6 — circuit breaker: fall back to asking the user if too many denials.
     if store.should_fallback_to_user() and cls != "blocked":
         dec = Decision("ask", cls, "denial fatigue circuit breaker", mode)
+        _log.info(
+            "permission_decision",
+            extra={"decision": "ask", "class_": cls, "mode": mode,
+                   "trigger": "denial_fatigue"},
+        )
         return dec.to_dict()
 
     # Prior denial for this exact command (≥ 2 prior denials)
     prior = store.denied_before(cmd)
     if prior:
         dec = Decision("deny", cls, "repeated denial within TTL", mode, prior=prior)
+        _log.warning(
+            "permission_decision",
+            extra={"decision": "deny", "class_": cls, "mode": mode,
+                   "trigger": "repeated_denial"},
+        )
         return dec.to_dict()
 
     # Layer 4 — dangerous patterns always deny (even under bypass/yolo unless --unsafe).
     if cls == "blocked":
         if mode == "bypass" and allow_unsafe_yolo:
+            _log.warning(
+                "permission_decision",
+                extra={"decision": "allow", "class_": cls, "mode": mode,
+                       "trigger": "bypass_unsafe_override"},
+            )
             return Decision("allow", cls, reason + " (bypass --unsafe override)", mode).to_dict()
         store.record_denial(cmd, reason)
+        _log.warning(
+            "permission_decision",
+            extra={"decision": "deny", "class_": cls, "mode": mode,
+                   "trigger": "dangerous_pattern"},
+        )
         return Decision("deny", cls, reason, mode).to_dict()
 
     # Layer 3 — user rules
