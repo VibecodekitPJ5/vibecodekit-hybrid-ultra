@@ -4,6 +4,10 @@ version: 0.12.0
 allowed-tools: [Bash, Read]
 inspired-by: "gstack/qa/SKILL.md.tmpl @ commit 675717e3"
 license: "MIT — see LICENSE-third-party.md"
+deprecated: true
+replaced-by: /vck-qa
+removal-target: v1.0.0
+deprecation-note-vn: "`/vck-qa-only` chỉ là phiên bản no-fix-loop của `/vck-qa`; dùng `/vck-qa` (đã có toggle CI gate qua exit code) thay thế. Giữ đến v1.0.0 cho backward compat."
 ---
 
 # /vck-qa-only — QA without fix loop

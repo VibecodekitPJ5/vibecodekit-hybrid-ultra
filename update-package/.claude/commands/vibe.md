@@ -107,9 +107,10 @@ vibe verb               # in song ngữ help, list 8 verb
 ```
 
 Verb không hợp lệ (vd. `vibe verb bogus`) trả exit code 2 + thông báo
-8 verb hợp lệ.  4 command đã `deprecated: true` ở PR4 (`/vibe-ship`,
-`/vibe-rri-t`, `/vibe-rri-ui`, `/vibe-rri-ux`) **không** nằm trong
-verb map — front-door luôn route tới canonical đang sống.
+8 verb hợp lệ.  5 command đã `deprecated: true` (PR4: `/vibe-ship`,
+`/vibe-rri-t`, `/vibe-rri-ui`, `/vibe-rri-ux`; PR5: `/vck-qa-only`)
+**không** nằm trong verb map — front-door luôn route tới canonical
+đang sống.
 
 ## References
 
