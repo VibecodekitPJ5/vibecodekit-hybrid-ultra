@@ -32,13 +32,27 @@ jobs:
       - name: Assert canonical org (drift guard)
         # Refuse to publish CI status under a non-canonical owner.  Đồng bộ với
         # ``tests/test_repo_urls_canonical.py``: canonical org là VibecodekitPJ4
-        # (đổi từ PJ3 ở PR1 sau review #4).  Forks chạy CI sẽ fail step này —
-        # đây là chủ đích để tránh fork publish status như upstream.
+        # (đổi từ PJ3 ở PR1 sau review #4).
+        #
+        # Fork CI opt-out: set repo variable ``CANONICAL_ORG_STRICT=false`` trên
+        # fork (Settings → Secrets and variables → Actions → Variables) để
+        # chuyển step này sang warning-only mode.  Upstream (``VibecodekitPJ4``)
+        # **không** set biến này → giữ strict fail-fast như cũ.  Tham chiếu
+        # discussion: PR6 Devin session, option B — env-gated strict mode.
         if: github.event_name == 'push' || github.event_name == 'pull_request'
+        env:
+          STRICT_MODE: ${{ vars.CANONICAL_ORG_STRICT }}
         run: |
           owner="${{ github.repository_owner }}"
           echo "owner=$owner"
+          # Default strict (empty var) → fail on non-canonical.  Set var to
+          # "false" trên fork để warning-only.
+          strict="${STRICT_MODE:-true}"
           if [ "$owner" != "VibecodekitPJ4" ]; then
+            if [ "$strict" = "false" ]; then
+              echo "::warning::Running under non-canonical org '$owner' — fork CI, advisory only (CANONICAL_ORG_STRICT=false)."
+              exit 0
+            fi
             echo "::error::Canonical org là VibecodekitPJ4, nhưng đang chạy dưới '$owner'."
             exit 1
           fi
@@ -46,6 +60,10 @@ jobs:
           remote="$(git config --get remote.origin.url || true)"
           echo "remote=$remote"
           if ! echo "$remote" | grep -qE "VibecodekitPJ4/"; then
+            if [ "$strict" = "false" ]; then
+              echo "::warning::remote.origin.url không match VibecodekitPJ4/ — fork drift, advisory only."
+              exit 0
+            fi
             echo "::error::remote.origin.url không match VibecodekitPJ4/ — drift."
             exit 1
           fi
