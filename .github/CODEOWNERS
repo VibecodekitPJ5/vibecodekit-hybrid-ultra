@@ -1,0 +1,29 @@
+# VibecodeKit Hybrid Ultra — code ownership map
+#
+# Các team GitHub placeholder dưới đây (@VibecodekitPJ4/<team>) phải được
+# maintainer tạo trên GitHub trước khi CODEOWNERS enforce review — nếu team
+# chưa tồn tại, GitHub sẽ bỏ qua quy tắc đó thay vì block PR. Xem ghi chú
+# PR1 về việc tạo team `maintainers`, `security`, `engine`, `devops`.
+
+# Default fallback
+*                                              @VibecodekitPJ4/maintainers
+
+# Core engine (security-critical)
+/scripts/vibecodekit/permission_engine.py     @VibecodekitPJ4/security
+/scripts/vibecodekit/denial_store.py          @VibecodekitPJ4/security
+/scripts/vibecodekit/hook_interceptor.py      @VibecodekitPJ4/security
+/scripts/vibecodekit/security_classifier.py   @VibecodekitPJ4/security
+
+# Engine
+/scripts/vibecodekit/scaffold_engine.py       @VibecodekitPJ4/engine
+/scripts/vibecodekit/conformance_audit.py     @VibecodekitPJ4/engine
+/scripts/vibecodekit/methodology.py           @VibecodekitPJ4/engine
+
+# CI / release
+/.github/workflows/                            @VibecodekitPJ4/devops
+/tools/sync_version.py                         @VibecodekitPJ4/devops
+/VERSION                                       @VibecodekitPJ4/devops
+
+# Security policy
+/SECURITY.md                                   @VibecodekitPJ4/security
+/.github/CODEOWNERS                            @VibecodekitPJ4/security
