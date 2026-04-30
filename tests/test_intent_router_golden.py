@@ -88,6 +88,110 @@ def _classify(router: IntentRouter, prose: str) -> set[str]:
     return set(m.intents)
 
 
+def _compute_confusion_matrix(
+    entries: list[dict], router: IntentRouter | None = None
+) -> dict[str, object]:
+    """Tính metrics deterministic cho golden set.
+
+    Trả ``dict`` với key sorted để JSON dump ra cùng 1 byte stream
+    cho cùng (router, golden):
+
+    - ``set_inclusion_accuracy``: float
+    - ``exact_match_accuracy``: float
+    - ``per_locale_set_inclusion``: dict[locale, accuracy]
+    - ``per_intent`` (multi-label confusion):
+        {intent: {tp, fp, fn, tn}} với:
+          tp = entry mà intent ∈ expected ∩ actual
+          fp = entry mà intent ∈ actual \\ expected
+          fn = entry mà intent ∈ expected \\ actual
+          tn = entry mà intent ∉ expected ∪ actual
+    - ``miss_pairs``: dict["expected_sorted -> actual_sorted", count]
+        Top-N off-diagonal cluster để spot lỗi router phổ biến.
+
+    Helper được tách từ logic test để tái dùng trong
+    ``tools/dump_intent_confusion.py`` (PR4 release dump).
+    """
+    router = router or IntentRouter()
+    n = len(entries)
+    if n == 0:
+        return {
+            "set_inclusion_accuracy": 0.0,
+            "exact_match_accuracy": 0.0,
+            "per_locale_set_inclusion": {},
+            "per_intent": {},
+            "miss_pairs": {},
+            "n": 0,
+        }
+
+    # Discover intent universe = union(expected) ∪ union(actual_seen).
+    actuals: list[set[str]] = []
+    expecteds: list[set[str]] = []
+    locales: list[str] = []
+    for entry in entries:
+        expected = set(entry["expected_intents"])
+        actual = _classify(router, entry["prose"])
+        expecteds.append(expected)
+        actuals.append(actual)
+        locales.append(entry.get("locale", "unknown"))
+
+    universe: set[str] = set()
+    for s in expecteds + actuals:
+        universe.update(s)
+
+    # Set-inclusion + exact-match accuracy.
+    si_pass = sum(1 for e, a in zip(expecteds, actuals) if _entry_passes(e, a))
+    em_pass = sum(1 for e, a in zip(expecteds, actuals) if e == a)
+
+    # Per-locale set-inclusion.
+    by_locale: dict[str, list[bool]] = defaultdict(list)
+    for loc, e, a in zip(locales, expecteds, actuals):
+        by_locale[loc].append(_entry_passes(e, a))
+    per_locale = {
+        loc: round(sum(passes) / len(passes), 6) if passes else 0.0
+        for loc, passes in sorted(by_locale.items())
+    }
+
+    # Per-intent confusion (binary classification per intent).
+    per_intent: dict[str, dict[str, int]] = {}
+    for intent in sorted(universe):
+        tp = fp = fn = tn = 0
+        for e, a in zip(expecteds, actuals):
+            in_e = intent in e
+            in_a = intent in a
+            if in_e and in_a:
+                tp += 1
+            elif in_a and not in_e:
+                fp += 1
+            elif in_e and not in_a:
+                fn += 1
+            else:
+                tn += 1
+        per_intent[intent] = {"tp": tp, "fp": fp, "fn": fn, "tn": tn}
+
+    # Top miss-pair cluster (off-diagonal, sorted descending).
+    miss_pairs_counter: dict[str, int] = defaultdict(int)
+    for e, a in zip(expecteds, actuals):
+        if e == a:
+            continue
+        key = (
+            f"expected={sorted(e) if e else ['<Clarification>']}"
+            f" -> actual={sorted(a) if a else ['<Clarification>']}"
+        )
+        miss_pairs_counter[key] += 1
+    miss_pairs = dict(
+        sorted(miss_pairs_counter.items(), key=lambda kv: (-kv[1], kv[0]))
+    )
+
+    return {
+        "n": n,
+        "set_inclusion_accuracy": round(si_pass / n, 6),
+        "exact_match_accuracy": round(em_pass / n, 6),
+        "per_locale_set_inclusion": per_locale,
+        "per_intent": per_intent,
+        "miss_pairs": miss_pairs,
+    }
+
+
 def _entry_passes(expected: set[str], actual: set[str]) -> bool:
     """Set-inclusion check, **closed under empty expected**.
 

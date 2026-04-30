@@ -96,6 +96,17 @@ def main() -> None:
         status = "OK" if ok else "SKIP (not found)"
         print(f"  {label}: {status}")
 
+    # PR4 reminder: confusion matrix dump phải regen sau bump version.
+    # Test ``tests/test_benchmarks_intent_dump.py`` sẽ fail nếu thiếu file
+    # ``benchmarks/intent_router_<new-version>.json``.
+    bench = REPO_ROOT / "benchmarks" / f"intent_router_{version}.json"
+    if not bench.is_file():
+        print(
+            f"\n[PR4 reminder] {bench.relative_to(REPO_ROOT)} chưa tồn tại "
+            "cho version mới. Regen bằng:"
+        )
+        print("  PYTHONPATH=./scripts python3 tools/dump_intent_confusion.py")
+
     print(f"\nDone. Run `pytest tests/test_docs_count_sync.py -v` to verify.")
 
 
