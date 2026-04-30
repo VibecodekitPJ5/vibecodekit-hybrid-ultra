@@ -1,13 +1,11 @@
 # VibecodeKit Hybrid Ultra
 
-> **Current release:** v0.16.2 ([CHANGELOG](CHANGELOG.md))
-> A defensive, audit-driven runtime + skill bundle for AI-assisted
-> coding workflows.  42 commands (25 `/vibe-*` + 1 `/vibe` + 16 `/vck-*`) ·
-> 7 sub-agent roles · 33 hook events · 6-layer permission pipeline ·
-> 3-tier persistent memory · MCP integration · VIBECODE-MASTER v5
-> methodology · RRI-T / RRI-UI / RRI-UX question banks · Python-pure
-> browser daemon · scaffold engine (10 presets × 3 stacks).
+> **Permission engine + scaffold + MCP server for AI coding agents — pure Python stdlib runtime.**
+> Use when an AI agent needs to audit shell commands through a 6-layer pipeline, scaffold a project from a preset, expose tools via Model Context Protocol, or run RRI / RRI-T / RRI-UX methodology gates.
+> Start at [`QUICKSTART.md`](QUICKSTART.md) or run `PYTHONPATH=./scripts python -m vibecodekit.cli demo` for an offline 2-second tour.
 
+> **Current release:** v0.16.2 ([CHANGELOG](CHANGELOG.md)) — see [Layout](#layout) below for the surface inventory (42 slash commands, 7 sub-agent roles, 33 hook events, 87 conformance probes, …).
+>
 > **License:** MIT — see [`LICENSE`](LICENSE) and the third-party
 > attribution manifest [`LICENSE-third-party.md`](LICENSE-third-party.md).
 
@@ -82,6 +80,41 @@ Full walkthrough: [`USAGE_GUIDE.md` §18](USAGE_GUIDE.md#18-activation-cheat-she
 ---
 
 ## Layout
+
+**Surface inventory (v0.16.2)** — moved here from the opening to keep
+the front matter focused on what the kit *does* rather than how many
+buttons it has:
+
+- **42 slash commands** — 25 `/vibe-*` + 1 master `/vibe` + 16 `/vck-*`
+  (5 of which are marked `deprecated: true` with explicit canonical
+  replacement, target removal in `v1.0.0`; see
+  [`tests/test_deprecated_frontmatter.py`](tests/test_deprecated_frontmatter.py)).
+- **8-verb unified front-door** — `/vibe <verb>` dispatches to one of
+  `scan / plan / build / review / qa / ship / audit / doctor` →
+  canonical slash command (additive layer on top of the 42).
+- **7 sub-agent roles** — coordinator, scout, builder, qa, security,
+  reviewer, qa-lead (ACL-enforced in `subagent_runtime.PROFILES`).
+- **33 hook events** — 9 lifecycle groups in
+  `hook_interceptor.SUPPORTED_EVENTS`.
+- **6-layer permission pipeline** — see
+  `references/10-permission-classification.md`.
+- **3-tier persistent memory** — user / project / team, retrieval
+  hybrid lexical + embedding (default `hash-256`, offline).
+- **MCP integration** — stdio + inproc adapters; bundled selfcheck
+  server (`vibecodekit.mcp_servers.selfcheck`).
+- **87 internal conformance probes** — see
+  [`BENCHMARKS-METHODOLOGY.md`](BENCHMARKS-METHODOLOGY.md) for what
+  these measure and what they explicitly do **not** claim (no
+  HumanEval / MBPP / SWE-bench, no external benchmark, no API key
+  dependency).
+- **VIBECODE-MASTER v5 methodology** — 8-step workflow (Scan → RRI →
+  Vision → Blueprint → Task graph → Build → Verify → Release).
+- **RRI / RRI-T / RRI-UI / RRI-UX** — 4 release-gate question banks +
+  evaluators in `methodology.py`.
+- **Python-pure browser daemon** — Playwright wired in Phase 1, used
+  by `/vck-qa` for sub-second checklist verification.
+- **Scaffold engine** — 10 presets × 3 stacks (saas / landing / shop /
+  blog / dashboard / portfolio / docs / api-todo / mobile / crm).
 
 ```
 vibecodekit-hybrid-ultra/
