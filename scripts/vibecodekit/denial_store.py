@@ -29,7 +29,10 @@ import time
 from pathlib import Path
 from typing import Dict, Iterator, Optional
 
+from vibecodekit._logging import get_logger
 from vibecodekit._platform_lock import file_lock
+
+_log = get_logger("vibecodekit.denial_store")
 
 DEFAULT_MAX_CONSECUTIVE = 3
 DEFAULT_MAX_TOTAL = 20
@@ -127,6 +130,12 @@ class DenialStore:
             state["total"] = state.get("total", 0) + 1
             self._write(self._data)
             self._state = state
+            _log.debug(
+                "denial_recorded",
+                extra={"key": k, "count": rec["count"],
+                       "consecutive": state["consecutive"],
+                       "total": state["total"]},
+            )
             return dict(rec)
 
     def record_success(self) -> None:

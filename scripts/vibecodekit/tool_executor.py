@@ -34,7 +34,10 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from .context_modifier_chain import apply_modifiers
+from ._logging import get_logger
 from .event_bus import EventBus
+
+_log = get_logger("vibecodekit.tool_executor")
 from .hook_interceptor import run_hooks, is_blocked
 from .permission_engine import decide
 from .tool_schema_registry import partition_tool_blocks
@@ -510,6 +513,11 @@ def execute_blocks(root: str | os.PathLike, blocks: List[Dict], session_id: Opti
     bus = EventBus(root, session_id)
     batches = partition_tool_blocks(blocks)
     bus.emit("tool_partitioned", "ok", {"batches": [{"safe": b["safe"], "count": len(b["blocks"])} for b in batches]})
+    _log.info(
+        "tool_plan_start",
+        extra={"session_id": bus.session_id, "batch_count": len(batches),
+               "block_count": len(blocks), "mode": mode},
+    )
 
     results: List[Dict[str, Any]] = []
     modifiers: List[Dict[str, Any]] = []
@@ -538,6 +546,11 @@ def execute_blocks(root: str | os.PathLike, blocks: List[Dict], session_id: Opti
 
     context, applied = apply_modifiers(str(root), {}, modifiers)
     bus.emit("context_modifiers_applied", "ok", {"applied": applied, "context_keys": list(context.keys())})
+    _log.info(
+        "tool_plan_end",
+        extra={"session_id": bus.session_id, "result_count": len(results),
+               "modifiers_applied": applied},
+    )
     return {"session_id": bus.session_id, "event_log": str(bus.path),
             "results": results, "context": context}
 
