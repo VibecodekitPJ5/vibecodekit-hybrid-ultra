@@ -24,7 +24,6 @@ import ipaddress
 import re
 import unicodedata
 from dataclasses import dataclass
-from typing import Iterable, Optional, Sequence
 from urllib.parse import urlparse
 
 # ---- 1. URL blocklist -----------------------------------------------------

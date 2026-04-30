@@ -49,7 +49,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable
 
 
 def _extract_url(text: str, suffix: str) -> str | None:

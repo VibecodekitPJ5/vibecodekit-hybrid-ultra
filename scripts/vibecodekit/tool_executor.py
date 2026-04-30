@@ -27,12 +27,11 @@ import contextlib
 import json
 import os
 import re
-import shlex
 import signal
 import subprocess
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 
 from .context_modifier_chain import apply_modifiers
 from .event_bus import EventBus

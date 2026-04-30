@@ -18,7 +18,7 @@ import json
 import os
 import re
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 
 _IGNORED_DIRS = {"node_modules", ".git", "dist", "build", ".vibecode", ".venv", "venv", "__pycache__"}

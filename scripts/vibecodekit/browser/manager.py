@@ -24,7 +24,7 @@ import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Deque, Dict, List, Optional
+from typing import Any, Deque, Dict, Optional
 
 try:  # pragma: no cover — exercised only with [browser] extras installed.
     from playwright.sync_api import (  # type: ignore[import-not-found]

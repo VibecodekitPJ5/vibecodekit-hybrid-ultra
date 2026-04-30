@@ -29,7 +29,7 @@ from __future__ import annotations
 import dataclasses
 import re
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Optional
 
 try:  # YAML is stdlib-friendly only via PyYAML; degrade gracefully if absent.
     import yaml as _yaml  # type: ignore

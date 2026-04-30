@@ -24,7 +24,7 @@ import re
 import subprocess
 import time
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence
+from typing import Optional
 
 # --- Sensitive-file patterns ------------------------------------------------
 # Tested against the *basename* and *full posix path*.  Patterns extend the

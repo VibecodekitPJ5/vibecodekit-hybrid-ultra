@@ -75,3 +75,13 @@ markers = [
     "browser: requires the [browser] optional extras (playwright, fastapi, uvicorn).",
     "ml: requires the [ml] optional extras (onnxruntime, transformers, httpx).",
 ]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
+# PR2: bật pyflakes-only rules (unused import / unused local / shadowed import).
+# Style rules cố tình KHÔNG bật ở giai đoạn này để tránh diff lớn / fight với
+# convention hiện tại (PEP8, naming).  Mở rộng select set ở PR sau nếu cần.
+select = ["F401", "F841", "F811"]
