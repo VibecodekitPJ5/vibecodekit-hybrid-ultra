@@ -167,6 +167,47 @@ Event catalog (stable names, mở rộng theo release):
 
 ---
 
+## 4c. Permission engine coverage (PR4 — strict deny + safe exceptions)
+
+v0.16.2 + PR4 mở rộng Layer 4 của permission engine thành 3 tầng:
+
+* **Layer 4b — Strict deny (9 pattern, port từ gstack).** Mỗi pattern có
+  ``rule_id`` ổn định (``R-*``) + ``severity=high``.  Catalog đầy đủ
+  trong ``SECURITY.md`` §"Strict-deny catalog".
+* **Layer 4c — Safe-exception list cho ``rm -rf``.** 13 build artifact
+  (``node_modules``, ``dist``, ``__pycache__``, …) → ``decision != "deny"``
+  khi command là ``rm -rf <safe_target>...``.  Chặn mọi dạng có shell
+  metachar (``$(`` / ``` ` ``` / ``;`` / ``&`` / ``|`` / ``<`` / ``>``)
+  → giảm nuisance "ask" khi clean workspace, không mở bypass channel.
+* **Layer 4 (existing) — Dangerous patterns.** Fallback cho các dạng
+  blocked không khớp Layer 4b.  Audit log dùng
+  ``R-DANGEROUS-PATTERN-FALLBACK`` + ``severity=medium``.
+
+### Audit log (``~/.vibecodekit/security/attempts.jsonl``)
+
+* JSONL, 1 entry/quyết định deny, ghi qua ``_platform_lock`` (fcntl +
+  msvcrt fallback).
+* Format: ``{ts, decision, rule_id, cmd_hash, mode, severity}`` — chỉ
+  ``sha256:<32-char-prefix>`` của command, không plaintext.
+* Rate cap 60/60s sliding window.  Overflow → ``dropped_count`` trong
+  sidecar ``attempts.meta.json`` (rotate hourly qua ``hour_key``).
+* Override path: env ``VIBECODE_AUDIT_LOG_DIR`` (test isolation) +
+  fallback ``tempfile.gettempdir()`` khi ``$HOME`` không writable.
+
+### Test coverage
+
+``tests/test_permission_engine_strict_deny.py`` (25 test):
+
+* 11 parametrized strict-deny probe → decision=deny + rule_id expected.
+* 6 safe-exception probe → không deny.
+* Counter-probe: ``rm -rf /etc`` vẫn deny, ``rm -rf $(whoami)`` vẫn deny,
+  ``chmod 755 ./script.sh`` không deny.
+* Audit log smoke: ghi đủ 6 field; plaintext secret KHÔNG leak ra file.
+* Rate cap: 70 deny trong 1 window → ≤60 entry, ``dropped_count > 0``.
+* ``cmd_hash`` stability + fallback tempdir.
+
+---
+
 ## 5. Roadmap for external benchmarks (Phase 2)
 
 We plan to add external benchmark runs to provide ground-truth quality

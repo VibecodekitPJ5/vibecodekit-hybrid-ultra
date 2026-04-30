@@ -51,8 +51,43 @@ Tools registered via `tools.json` chạy qua permission engine trước khi exec
 ## Known limitations (v0.16.2)
 - Coverage 57% trên `tool_executor.py` (hot-path subprocess) — tăng lên ≥80% ở PR7.
 - mypy strict 22 errors trong 4 core file — fix ở PR6.
-- Logging: `print()` ad-hoc thay vì `logging` (PR2 fix).
-- 4 pattern hiện trả "ask" thay vì "deny" (PR4 fix): `chmod 777 /`, `shutdown`, `history -c`, `rm $(...)`.
+- Logging: `print()` ad-hoc thay vì `logging` — ✅ instrumented (PR2, 4 event point).
+- 4 pattern hiện trả "ask" thay vì "deny" — ✅ fixed (PR4): `chmod 777 /`,
+  `shutdown`, `history -c`, `rm $(...)` giờ deny với `rule_id` ổn định.
+
+## Strict-deny catalog (PR4)
+
+9 pattern cao-rủi-ro trong Layer 4b — audit log ghi `rule_id` + `severity=high`:
+
+| Rule ID | Pattern | Reason |
+|---|---|---|
+| `R-CHMOD-WORLD-ROOT-001` | `chmod 777 /` | world-writable chmod on / |
+| `R-SHUTDOWN-HOST-002`    | `shutdown ...` | host shutdown |
+| `R-HISTORY-WIPE-003`     | `history -c` | shell history wipe |
+| `R-RM-CMD-SUBST-004`     | `rm ... $(...)` | rm with command substitution |
+| `R-KUBECTL-DELETE-ALL-005` | `kubectl delete --all` / `-A` / `namespace` | cluster-wide delete |
+| `R-TERRAFORM-DESTROY-006` | `terraform destroy` | infra teardown |
+| `R-AWS-S3-RM-RECURSIVE-007` | `aws s3 rm ... --recursive` | S3 bulk delete |
+| `R-SQL-DATA-LOSS-008`    | `DROP TABLE` / `TRUNCATE TABLE` / `DROP DATABASE` (case-insensitive) | SQL data loss |
+| `R-GCP-VM-DELETE-009`    | `gcloud compute instances delete` | GCP VM delete |
+
+Safe-exception (Layer 4c) cho `rm -rf <target>` nếu target thuộc:
+
+`node_modules`, `.next`, `dist`, `__pycache__`, `.cache`, `build`, `.turbo`,
+`coverage`, `.pytest_cache`, `.mypy_cache`, `.ruff_cache`, `.venv`, `venv`
+
+(cho phép prefix `./` hoặc `*/`).
+
+### Audit log
+
+- **Path:** `~/.vibecodekit/security/attempts.jsonl`
+  (override: env `VIBECODE_AUDIT_LOG_DIR`; fallback `$TMPDIR` khi
+  HOME không writable).
+- **Format mỗi dòng:** `{"ts","decision","rule_id","cmd_hash","mode","severity"}`.
+  `cmd_hash` là `sha256:<32-char-prefix>` của command — **KHÔNG** ghi
+  plaintext (tránh leak credential nếu cmd chứa env var).
+- **Rate cap:** 60 entry/60 giây (sliding window); vượt → drop + tăng
+  `dropped_count` trong `attempts.meta.json` (rotate theo `hour_key`).
 
 ## Supply chain & reproducible builds (PR3)
 
