@@ -99,6 +99,29 @@ Threshold `0.75` được hard-code trong test.  **KHÔNG hạ ngưỡng** nếu
 baseline tụt xuống dưới — sửa router (mở rộng `TIER_1` triggers, điều
 chỉnh weight) hoặc cập nhật JSONL kèm methodology note ở đây.
 
+### 4.1 Intent router release matrix dump (PR4)
+
+Mỗi minor / patch release commit kèm 1 file
+`benchmarks/intent_router_<VERSION>.json` chứa confusion matrix
+deterministic (per-intent tp/fp/fn/tn + per-locale accuracy + miss-pair
+clusters).  File này là **release artefact** — diff giữa version cho
+biết router cải thiện / regress ở chỗ nào, không cần rerun benchmark.
+
+Schema chi tiết + cách interpret xem `benchmarks/README.md`.
+
+Regenerate sau khi bump VERSION:
+
+```bash
+PYTHONPATH=./scripts python3 tools/dump_intent_confusion.py
+# → ghi benchmarks/intent_router_<VERSION>.json
+```
+
+Test `tests/test_benchmarks_intent_dump.py` ép buộc:
+
+- File `benchmarks/intent_router_<current-VERSION>.json` tồn tại.
+- Schema hợp lệ (đủ key bắt buộc, kiểu dữ liệu đúng).
+- `set_inclusion_accuracy` ≥ 0.75 (cùng gate golden eval).
+
 ## 5. Roadmap for external benchmarks (Phase 2)
 
 We plan to add external benchmark runs to provide ground-truth quality

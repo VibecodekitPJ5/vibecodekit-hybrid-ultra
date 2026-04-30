@@ -1,0 +1,211 @@
+{
+  "exact_match_accuracy": 0.894231,
+  "golden_dataset": "tests/fixtures/intent_router_golden.jsonl",
+  "miss_pairs": {
+    "expected=['DOCTOR'] -> actual=['DOCTOR', 'VERIFY']": 1,
+    "expected=['RRI-T'] -> actual=['RRI-T', 'VERIFY']": 1,
+    "expected=['SCAN', 'VCK_REVIEW'] -> actual=['SCAN', 'VCK_REVIEW', 'VERIFY']": 1,
+    "expected=['SCAN', 'VERIFY'] -> actual=['VERIFY']": 1,
+    "expected=['SCAN'] -> actual=['SCAN', 'VERIFY']": 1,
+    "expected=['SHIP'] -> actual=['MAINTAIN']": 1,
+    "expected=['VCK_DESIGN_CONSULTATION'] -> actual=['RRI-UI', 'VCK_DESIGN_CONSULTATION']": 2,
+    "expected=['VCK_ENG_REVIEW'] -> actual=['ADVISOR', 'VCK_ENG_REVIEW']": 2,
+    "expected=['VCK_SECOND_OPINION'] -> actual=['ADVISOR', 'VCK_SECOND_OPINION']": 1
+  },
+  "n": 104,
+  "per_intent": {
+    "ADVISOR": {
+      "fn": 0,
+      "fp": 3,
+      "tn": 97,
+      "tp": 4
+    },
+    "BUILD": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 90,
+      "tp": 14
+    },
+    "DASHBOARD": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "DOCTOR": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 101,
+      "tp": 3
+    },
+    "MAINTAIN": {
+      "fn": 0,
+      "fp": 1,
+      "tn": 98,
+      "tp": 5
+    },
+    "MEMORY": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "MODULE": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "REFINE": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 99,
+      "tp": 5
+    },
+    "RRI": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 88,
+      "tp": 16
+    },
+    "RRI-T": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "RRI-UI": {
+      "fn": 0,
+      "fp": 2,
+      "tn": 100,
+      "tp": 2
+    },
+    "RRI-UX": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "SCAN": {
+      "fn": 1,
+      "fp": 0,
+      "tn": 84,
+      "tp": 19
+    },
+    "SHIP": {
+      "fn": 1,
+      "fp": 0,
+      "tn": 99,
+      "tp": 4
+    },
+    "VCK_CANARY": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_CEO_REVIEW": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_CSO": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 101,
+      "tp": 3
+    },
+    "VCK_DESIGN_CONSULTATION": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_DESIGN_REVIEW": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_ENG_REVIEW": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_INVESTIGATE": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_LEARN": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_OFFICE_HOURS": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_PIPELINE": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_QA": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_RETRO": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_REVIEW": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 100,
+      "tp": 4
+    },
+    "VCK_SECOND_OPINION": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VCK_SHIP": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 102,
+      "tp": 2
+    },
+    "VERIFY": {
+      "fn": 0,
+      "fp": 4,
+      "tn": 82,
+      "tp": 18
+    },
+    "VISION": {
+      "fn": 0,
+      "fp": 0,
+      "tn": 88,
+      "tp": 16
+    }
+  },
+  "per_locale_set_inclusion": {
+    "en": 0.96,
+    "vi": 1.0
+  },
+  "router": "vibecodekit.intent_router.IntentRouter",
+  "set_inclusion_accuracy": 0.980769,
+  "version": "0.16.2"
+}
