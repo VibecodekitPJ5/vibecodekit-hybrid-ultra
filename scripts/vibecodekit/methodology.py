@@ -36,6 +36,7 @@ __all__ = (
     "RRI_T_STRESS_AXES",
     "RRI_T_RESULT_LEVELS",
     "RRI_UX_AXES",
+    "RRI_UX_DIMENSIONS",
     "RRI_UX_RESULT_LEVELS",
     # RRI runners (3 lõi methodology — public lock).
     "evaluate_rri_t",

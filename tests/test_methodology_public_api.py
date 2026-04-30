@@ -159,14 +159,25 @@ def test_lookup_style_token_resolves_canonical_token() -> None:
     """Smoke check ``lookup_style_token`` (đã có test sâu hơn ở
     ``tests/test_content_depth.py:241`` — test này chỉ lock signature).
 
-    - Token canonical "FP-1" (Flow Physics axis 1) phải trả dict có
-      key ``token_id``.
+    - Token canonical ``"FP-01"`` (Font Pairing canonical đầu tiên trong
+      ``FONT_PAIRINGS``) phải trả dict có key ``id`` (không phải
+      ``token_id`` — xem ``methodology.py:644``) + ``kind``.
     - Token không tồn tại trả ``None``.
+
+    ``FONT_PAIRINGS`` được định nghĩa cứng trong module nên positive
+    case là **mandatory** (không soft-skip).
     """
-    found = methodology.lookup_style_token("FP-1")
-    if found is not None:  # bundle layout có thể không ship style tokens.
-        assert isinstance(found, dict)
-        assert found.get("token_id") == "FP-1"
+    found = methodology.lookup_style_token("FP-01")
+    assert found is not None, (
+        "FP-01 phải resolve được vì FONT_PAIRINGS là constant cứng "
+        "trong methodology.py — nếu None là regression nghiêm trọng."
+    )
+    assert isinstance(found, dict)
+    assert found.get("id") == "FP-01", (
+        f"lookup_style_token phải trả key 'id' (xem methodology.py:644), "
+        f"actual keys: {sorted(found.keys())}"
+    )
+    assert found.get("kind") == "font_pairing"
 
     missing = methodology.lookup_style_token("NOT-A-TOKEN-XYZ")
     assert missing is None
@@ -276,6 +287,10 @@ def test_methodology_module_constants_have_expected_shape() -> None:
 
     assert isinstance(methodology.RRI_UX_AXES, tuple)
     assert len(methodology.RRI_UX_AXES) >= 5
+
+    # RRI_UX_DIMENSIONS analogous với RRI_T_DIMENSIONS — cùng độ dài 7.
+    assert isinstance(methodology.RRI_UX_DIMENSIONS, tuple)
+    assert len(methodology.RRI_UX_DIMENSIONS) == 7
 
     assert isinstance(methodology.RRI_UX_RESULT_LEVELS, set)
     assert methodology.RRI_UX_RESULT_LEVELS == {
