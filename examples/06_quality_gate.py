@@ -11,10 +11,14 @@ Two scenarios are exercised:
   1. PASS — all 15 keys ≥ 0.85.
   2. FAIL — one axis dipped to 0.55 (security risk evidence).
 """
+from __future__ import annotations
+
+from typing import Optional
+
 from vibecodekit.quality_gate import AXES, DIMENSIONS, evaluate
 
 
-def make_scorecard(axis_score_overrides: dict[str, float] | None = None) -> dict:
+def make_scorecard(axis_score_overrides: Optional[dict] = None) -> dict:
     """Build a 15-key scorecard (7 dims + 8 axes) with default 0.90."""
     overrides = axis_score_overrides or {}
     sc = {}

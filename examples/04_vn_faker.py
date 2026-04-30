@@ -10,6 +10,8 @@ prefixes per issuer, and VND-formatted amounts (``1.500.000đ``).
 
 Deterministic output (``seed=42``) so this script is snapshot-friendly.
 """
+from __future__ import annotations
+
 from vibecodekit.vn_faker import VnFaker
 
 
@@ -27,7 +29,7 @@ def user_profile(faker: VnFaker) -> dict:
     }
 
 
-def shop_catalog(faker: VnFaker, n: int = 3) -> list[dict]:
+def shop_catalog(faker: VnFaker, n: int = 3) -> list:
     """Build a tiny shop catalog with VND-formatted prices."""
     items = ["Áo thun cotton", "Quần jean nam", "Giày sneaker"]
     return [
