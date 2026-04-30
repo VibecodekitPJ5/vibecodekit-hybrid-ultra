@@ -33,14 +33,14 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from .context_modifier_chain import apply_modifiers
 from ._logging import get_logger
+from .context_modifier_chain import apply_modifiers
 from .event_bus import EventBus
-
-_log = get_logger("vibecodekit.tool_executor")
 from .hook_interceptor import run_hooks, is_blocked
 from .permission_engine import decide
 from .tool_schema_registry import partition_tool_blocks
+
+_log = get_logger("vibecodekit.tool_executor")
 
 
 MAX_READ_BYTES = 200_000        # hard cap for read_file
