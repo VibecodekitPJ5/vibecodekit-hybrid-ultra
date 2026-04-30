@@ -65,7 +65,8 @@ Tools registered via `tools.json` chạy qua permission engine trước khi exec
 - Artifact `pip-audit` (JSON) và `sbom` (JSON) được upload trên mỗi
   run — reviewer tải về để verify manually.
 - Dependabot (`.github/dependabot.yml`) mở tối đa 5 PR/week cho `pip` +
-  unlimited cho `github-actions` ecosystem.
+  5 PR/week cho `github-actions` ecosystem (default của Dependabot v2
+  khi không set `open-pull-requests-limit`).
 
 ## References
 - Inspired by `garrytan/gstack` `ARCHITECTURE.md` "Security model" layout,
