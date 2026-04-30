@@ -23,6 +23,32 @@ VIBECODE_UPDATE_PACKAGE="$(pwd)/update-package" \
   PYTHONPATH=./scripts python3 -m vibecodekit.conformance_audit --threshold 1.0
 ```
 
+### Deterministic env (PR3)
+
+Contributor muốn bit-for-bit reproducible environment — dùng `uv.lock`
+đã commit:
+
+```bash
+pip install uv
+uv sync --frozen            # cài đúng phiên bản pin trong uv.lock
+```
+
+`uv sync --frozen` **không** cập nhật `uv.lock`. Cần thêm / bỏ
+dependency → cập nhật `pyproject.toml` rồi chạy `uv lock` để regenerate
+lockfile, commit cả hai.
+
+Supply-chain verify trên lockfile:
+
+```bash
+pip install pip-audit
+uv export --format requirements-txt --no-hashes \
+  --no-emit-project --output-file requirements-lock.txt
+pip-audit --strict --requirement requirements-lock.txt
+```
+
+CI chạy đúng lệnh này trong `.github/workflows/security.yml`; CVE
+phát hiện → PR bị block, maintainer sẽ kiểm và bump version riêng.
+
 ## Project layout (1-minute tour)
 
 | Path | Purpose |

@@ -54,6 +54,21 @@ Tools registered via `tools.json` chạy qua permission engine trước khi exec
 - Logging: `print()` ad-hoc thay vì `logging` (PR2 fix).
 - 4 pattern hiện trả "ask" thay vì "deny" (PR4 fix): `chmod 777 /`, `shutdown`, `history -c`, `rm $(...)`.
 
+## Supply chain & reproducible builds (PR3)
+
+- `uv.lock` (repo root) pin hash + version cho toàn bộ dependency tree
+  (83 package resolved cross-platform ở v0.16.2). Contributor muốn
+  deterministic env: `uv sync --frozen` (không cập nhật lock).
+- CI workflow `.github/workflows/security.yml` chạy `pip-audit --strict`
+  trên `uv.lock` (export sang requirements-lock.txt) + sinh CycloneDX
+  SBOM (`sbom.json`) cho mỗi PR + lịch weekly Monday 06:00 UTC.
+- Artifact `pip-audit` (JSON) và `sbom` (JSON) được upload trên mỗi
+  run — reviewer tải về để verify manually.
+- Dependabot (`.github/dependabot.yml`) mở tối đa 5 PR/week cho `pip` +
+  unlimited cho `github-actions` ecosystem.
+
 ## References
-- Inspired by `garrytan/gstack` `ARCHITECTURE.md` "Security model" layout.
+- Inspired by `garrytan/gstack` `ARCHITECTURE.md` "Security model" layout,
+  `careful/bin/check-careful.sh` (PR4), và `ci-image.yml` / `actionlint.yml`
+  / `version-gate.yml` workflow pattern (PR3).
 - Cf-codepoint testing: probe 5 codepoint × `rm -rf /` bypass — all denied (verified v0.16.2).

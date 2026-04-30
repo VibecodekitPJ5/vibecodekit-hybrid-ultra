@@ -1,0 +1,31 @@
+name: version-gate
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  changelog-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Require CHANGELOG update khi VERSION thay đổi
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          changed="$(git diff --name-only "$BASE" HEAD)"
+          if echo "$changed" | grep -qx "VERSION"; then
+            if echo "$changed" | grep -qx "CHANGELOG.md"; then
+              echo "VERSION bumped and CHANGELOG.md updated — OK."
+            else
+              echo "::error::VERSION bumped nhưng CHANGELOG.md không được cập nhật. Thêm entry vào CHANGELOG.md hoặc revert VERSION."
+              exit 1
+            fi
+          else
+            echo "VERSION unchanged — CHANGELOG gate skipped."
+          fi

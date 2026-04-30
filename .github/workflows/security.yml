@@ -1,0 +1,59 @@
+name: security
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * 1"  # every Monday 06:00 UTC
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  pip-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install tooling
+        run: pip install --upgrade pip pip-audit cyclonedx-bom uv
+
+      - name: pip-audit (từ uv.lock)
+        # `pip-audit` không đọc trực tiếp `uv.lock`; ta export sang
+        # `requirements.txt` deterministic rồi audit.  `--no-emit-project`
+        # bỏ dòng `-e .` (project local không có trên PyPI) khỏi export.
+        run: |
+          uv export --format requirements-txt --no-hashes \
+            --no-emit-project --output-file requirements-lock.txt
+          pip-audit --strict --requirement requirements-lock.txt \
+            --format json --output pip-audit.json
+
+      - name: CycloneDX SBOM
+        # Cài lock snapshot vào venv rồi xuất SBOM từ environment đó.
+        if: always()
+        run: |
+          python -m venv .audit-venv
+          .audit-venv/bin/pip install --upgrade pip
+          .audit-venv/bin/pip install -r requirements-lock.txt
+          .audit-venv/bin/pip install cyclonedx-bom
+          .audit-venv/bin/cyclonedx-py environment \
+            --output-format JSON -o sbom.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pip-audit
+          path: pip-audit.json
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sbom
+          path: sbom.json
