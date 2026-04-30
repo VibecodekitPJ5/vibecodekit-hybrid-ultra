@@ -46,11 +46,18 @@ jobs:
           owner="${{ github.repository_owner }}"
           echo "owner=$owner"
           # Default strict (empty var) → fail on non-canonical.  Set var to
-          # "false" trên fork để warning-only.
-          strict="${STRICT_MODE:-true}"
+          # "false" trên fork để warning-only.  Accept bất kỳ casing
+          # ("false", "False", "FALSE", "no", "0") vì GitHub Actions
+          # Variables UI có thể render bool-ish string dưới nhiều form.
+          strict_raw="${STRICT_MODE:-true}"
+          strict="$(echo "$strict_raw" | tr '[:upper:]' '[:lower:]')"
+          case "$strict" in
+            false|no|0|off) strict="false" ;;
+            *)              strict="true"  ;;
+          esac
           if [ "$owner" != "VibecodekitPJ4" ]; then
             if [ "$strict" = "false" ]; then
-              echo "::warning::Running under non-canonical org '$owner' — fork CI, advisory only (CANONICAL_ORG_STRICT=false)."
+              echo "::warning::Running under non-canonical org '$owner' — fork CI, advisory only (CANONICAL_ORG_STRICT=$strict_raw)."
               exit 0
             fi
             echo "::error::Canonical org là VibecodekitPJ4, nhưng đang chạy dưới '$owner'."
