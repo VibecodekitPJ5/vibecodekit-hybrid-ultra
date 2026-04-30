@@ -26,6 +26,49 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 
+# Public API surface (PR3 / sau review #4).  Bất cứ symbol public-ish nào
+# KHÔNG nằm trong ``__all__`` đều được coi là internal — re-tooling /
+# refactor không cần PR mới.  Thêm symbol mới vào danh sách này phải kèm
+# test smoke trong ``tests/test_methodology_public_api.py``.
+__all__ = (
+    # Schema constants (dataclass-style — chỉ doc, không evaluate runtime).
+    "RRI_T_DIMENSIONS",
+    "RRI_T_STRESS_AXES",
+    "RRI_T_RESULT_LEVELS",
+    "RRI_UX_AXES",
+    "RRI_UX_RESULT_LEVELS",
+    # RRI runners (3 lõi methodology — public lock).
+    "evaluate_rri_t",
+    "evaluate_rri_ux",
+    "evaluate_vn_checklist",
+    # Anti-patterns + verify coverage.
+    "anti_patterns_canonical",
+    "evaluate_anti_patterns_checklist",
+    "evaluate_verify_coverage",
+    # Config persistence (CLI + downstream consumers).
+    "config_path",
+    "load_config",
+    "save_config",
+    "set_config",
+    "get_config_value",
+    "set_embedding_backend",
+    "get_embedding_backend",
+    # Style tokens + reference loader.
+    "lookup_style_token",
+    "list_references",
+    "load_reference",
+    "load_reference_section",
+    # RRI question bank + stack recommender.
+    "load_rri_questions",
+    "list_rri_question_project_types",
+    "recommend_stack",
+    "list_stack_recommendations",
+    # Command context composer.
+    "list_wired_commands",
+    "render_command_context",
+)
+
+
 # ---------------------------------------------------------------------------
 # RRI-T runner
 # ---------------------------------------------------------------------------
