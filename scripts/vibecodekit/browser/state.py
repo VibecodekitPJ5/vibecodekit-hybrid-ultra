@@ -29,7 +29,7 @@ import tempfile
 import time
 from dataclasses import dataclass, field, asdict
 from pathlib import Path
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Optional
 
 # Default idle timeout (seconds) — daemon shuts down after this many
 # seconds of inactivity.  Probe #55 verifies this default is exactly 30

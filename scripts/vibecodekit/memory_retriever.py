@@ -12,7 +12,7 @@ import os
 import re
 import unicodedata
 from pathlib import Path
-from typing import Dict, Iterable, List, Set
+from typing import Dict, List, Set
 
 
 MEMORY_FILES = (

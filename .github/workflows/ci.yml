@@ -55,10 +55,18 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
 
-      - name: Install pytest (core stays stdlib-only)
+      - name: Install pytest + ruff (core stays stdlib-only)
         run: |
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install pytest ruff
+
+      - name: Lint (ruff F401/F841/F811)
+        # PR2: zero-tolerance cho unused imports / unused locals / shadowed
+        # imports.  Style rules KHÔNG bật ở stage này.
+        env:
+          PYTHONPATH: ./scripts
+        run: |
+          python -m ruff check scripts/vibecodekit --select F401,F841,F811
 
       - name: eval_select preview (diff-based test selection)
         # Visibility-only on every event: prints the selection so reviewers

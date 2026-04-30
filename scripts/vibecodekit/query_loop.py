@@ -17,16 +17,15 @@ References:
 from __future__ import annotations
 
 import json
-import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, List, Optional
 
 from .approval_contract import create as create_approval
 from .compaction import compact
 from .cost_ledger import record_tool, record_turn, summary as ledger_summary
 from .event_bus import EventBus
-from .hook_interceptor import run_hooks, is_blocked
+from .hook_interceptor import run_hooks
 from .recovery_engine import RecoveryLedger
 from .tool_executor import execute_blocks
 

@@ -32,7 +32,7 @@ import json
 import os
 import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 # Rough per-million-token prices (USD) — illustrative defaults; the real
 # numbers are configurable via env vars.

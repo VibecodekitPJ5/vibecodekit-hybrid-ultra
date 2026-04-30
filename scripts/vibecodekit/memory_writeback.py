@@ -49,7 +49,7 @@ import os
 import re
 from collections import Counter
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Iterable
 
 
 _MARKER_BEGIN = "<!-- vibecode:auto:{name}:begin -->"

@@ -36,7 +36,6 @@ from __future__ import annotations
 import dataclasses
 import re
 import unicodedata
-from typing import Iterable, List, Optional, Sequence, Tuple
 
 # Intent tier-1 with VN + EN trigger phrases.  Order = canonical pipeline
 # order when multiple intents fire at once.

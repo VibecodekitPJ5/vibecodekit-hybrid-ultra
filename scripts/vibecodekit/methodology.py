@@ -22,7 +22,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
